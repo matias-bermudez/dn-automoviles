@@ -17,7 +17,10 @@
   }
   function raiz(r) { return r == null ? RAIZ : r; }
   function miles(n) { return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '.'); }
-  function precio(a) { return a.precio ? 'U$S ' + miles(a.precio) : 'Consultar'; }
+  // moneda: 'USD' (por defecto) o 'UYU'.
+  function precio(a) { return a.precio ? (a.moneda === 'UYU' ? '$ ' : 'U$S ') + miles(a.precio) : 'Consultar'; }
+  // Para ordenar autos con precios en distintas monedas.
+  function enDolares(a) { return a.precio ? (a.moneda === 'UYU' ? a.precio / ((C && C.dolar) || 40) : a.precio) : null; }
   function nombre(a) { return a.marca + ' ' + a.modelo; }
   function meta(a) { return [a.anio, miles(a.km) + ' km', a.combustible, a.transmision].join(' · '); }
   function autoUrl(a, r) { return raiz(r) + 'autos/' + encodeURIComponent(a.id) + '/'; }
@@ -86,7 +89,7 @@
 
   window.DN = {
     config: C, autos: AUTOS, VISTAS: VISTAS,
-    esc: esc, miles: miles, precio: precio, nombre: nombre, meta: meta,
+    esc: esc, miles: miles, precio: precio, enDolares: enDolares, nombre: nombre, meta: meta,
     autoUrl: autoUrl, waUrl: waUrl, buscar: buscar, recientes: recientes,
     silueta: silueta, media: media, card: card
   };

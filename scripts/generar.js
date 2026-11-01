@@ -101,6 +101,7 @@ function deFila(r) {
     traccion: r.traccion || null, motor: r.motor || null, color: r.color || null,
     puertas: r.puertas || null, duenos: r.duenos || null,
     precio: r.precio || null,
+    moneda: r.moneda || 'USD',
     etiqueta: r.estado === 'reservado' ? 'RESERVADO' : r.etiqueta || '',
     reservado: r.estado === 'reservado',
     destacado: r.destacado,
@@ -272,7 +273,7 @@ function autoLd(a, url) {
     offers: a.precio ? {
       '@type': 'Offer',
       price: a.precio,
-      priceCurrency: 'USD',
+      priceCurrency: a.moneda === 'UYU' ? 'UYU' : 'USD',
       availability: a.reservado ? 'https://schema.org/LimitedAvailability' : 'https://schema.org/InStock',
       itemCondition: 'https://schema.org/UsedCondition',
       url,

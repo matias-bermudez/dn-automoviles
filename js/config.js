@@ -11,6 +11,7 @@ window.DN_CONFIG = {
   horarioSchema: '',            // el mismo horario para Google, ej: 'Mo-Fr 09:00-18:00, Sa 09:00-13:00'
   zonas: 'Las Piedras y alrededores',
   tiktok: 'dnventascompras2',
+  dolar: 40,                    // pesos por dólar, aproximado: solo para ordenar por precio autos en distintas monedas
 
   // Supabase (base de datos de autos y panel /admin/). Vacíos = se usan los autos de js/autos.js.
   // La clave es la pública (anon / publishable): puede ir en el código, los permisos los pone supabase/schema.sql.

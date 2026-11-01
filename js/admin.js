@@ -142,7 +142,7 @@ function pintarLista() {
       <span class="admin-item__media">${media}</span>
       <span class="admin-item__txt">
         <strong>${esc(a.marca + ' ' + a.modelo + ' ' + a.anio)}</strong>
-        <span>${a.precio ? 'U$S ' + DN.miles(a.precio) : 'Consultar'} · ${DN.miles(a.km)} km</span>
+        <span>${DN.precio(a)} · ${DN.miles(a.km)} km</span>
         <span class="chips">${chips}</span>
       </span></button>`;
   }).join('') || '<p class="admin-nota">No hay autos acá todavía.</p>';

@@ -33,7 +33,8 @@ create table if not exists public.autos (
   color           text,
   puertas         int,
   duenos          int,
-  precio          int check (precio > 0),        -- U$S. Vacío = "Consultar"
+  precio          int check (precio > 0),        -- vacío = "Consultar"
+  moneda          text not null default 'USD' check (moneda in ('USD', 'UYU')),
   etiqueta        text,                          -- cartelito: NUEVO INGRESO, DESTACADO, OPORTUNIDAD...
   destacado       boolean not null default false,-- grande en el inicio
   estado          text not null default 'disponible' check (estado in ('disponible', 'reservado', 'vendido')),
@@ -44,6 +45,9 @@ create table if not exists public.autos (
   descripcion     text,
   fotos           text[] not null default '{}'   -- rutas en el bucket "fotos" (autos/<uuid>.jpg), la primera es la portada
 );
+
+-- Para proyectos creados antes de que existiera la moneda.
+alter table public.autos add column if not exists moneda text not null default 'USD' check (moneda in ('USD', 'UYU'));
 
 -- Fecha de última modificación: la usan el sitemap y la detección de cambios al publicar.
 create or replace function public.tocar_updated_at() returns trigger language plpgsql as $$

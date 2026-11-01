@@ -3,12 +3,12 @@
   var TIPOS = ['todos', 'auto', 'camioneta', 'utilitario'];
   var ORDENES = {
     recientes: function (a, b) { return (b.ingreso || '').localeCompare(a.ingreso || ''); },
-    'precio-asc': function (a, b) { return (a.precio || Infinity) - (b.precio || Infinity); },
-    'precio-desc': function (a, b) { return (b.precio || 0) - (a.precio || 0); },
+    'precio-asc': function (a, b) { return (DN.enDolares(a) || Infinity) - (DN.enDolares(b) || Infinity); },
+    'precio-desc': function (a, b) { return (DN.enDolares(b) || 0) - (DN.enDolares(a) || 0); },
     km: function (a, b) { return a.km - b.km; }
   };
 
-  // Los filtros viven en la URL para poder compartir/volver (autos.html?tipo=camioneta).
+  // Los filtros viven en la URL para poder compartir/volver (/autos/?tipo=camioneta).
   var params = new URLSearchParams(location.search);
   var estado = {
     tipo: TIPOS.indexOf(params.get('tipo')) >= 0 ? params.get('tipo') : 'todos',
