@@ -12,6 +12,11 @@ window.DN_CONFIG = {
   zonas: 'Las Piedras y alrededores',
   tiktok: 'dnventascompras2',
 
+  // Supabase (base de datos de autos y panel /admin/). Vacíos = se usan los autos de js/autos.js.
+  // La clave es la pública (anon / publishable): puede ir en el código, los permisos los pone supabase/schema.sql.
+  supabaseUrl: '',
+  supabaseKey: '',
+
   // URL pública del sitio, con / al final. Si se compra dominio, cambiarla acá.
   sitio: 'https://matias-bermudez.github.io/dn-automoviles/',
 

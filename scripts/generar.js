@@ -1,37 +1,148 @@
-// Arma el sitio estático en _site/ a partir de src/ y los datos de js/ (config, autos).
+// Arma el sitio estático en _site/ a partir de src/ y los datos de los autos.
 // Cada auto tiene su propia página (/autos/<id>/) con su título, descripción y datos
-// estructurados para Google. GitHub Actions lo corre en cada push a main.
+// estructurados para Google. GitHub Actions lo corre en cada push a main y cada 15 minutos.
 //
-//   node scripts/generar.js          → para publicar
-//   node scripts/generar.js --local  → para probar: python3 -m http.server 8000 -d _site
+// Los autos salen de Supabase si está configurado en js/config.js (los carga el dueño desde
+// /admin/); si no, de js/autos.js. Con Supabase, las fotos se bajan y se publican junto con la
+// web, así las visitas no consumen el plan de Supabase.
+//
+//   node scripts/generar.js                   → para publicar
+//   node scripts/generar.js --local           → para probar: python3 -m http.server 8791 -d _site
+//   SOLO_SI_CAMBIO=1 node scripts/generar.js  → no hace nada si los autos no cambiaron desde la última publicación
 //
 // Sin dependencias, solo Node 18+.
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
+const crypto = require('crypto');
 
 const RAIZ = path.join(__dirname, '..');
 const SRC = path.join(RAIZ, 'src');
 const SALIDA = path.join(RAIZ, '_site');
 const ESTATICOS = ['css', 'js', 'img', 'fonts'];
 
-// ---- Datos: se cargan los mismos archivos que usa el navegador ----
-
+// Se cargan los mismos archivos que usa el navegador.
 const ctx = vm.createContext({ window: {} });
-for (const f of ['js/config.js', 'js/autos.js', 'js/common.js']) {
-  vm.runInContext(fs.readFileSync(path.join(RAIZ, f), 'utf8'), ctx, { filename: f });
-}
+const correr = (f) => vm.runInContext(fs.readFileSync(path.join(RAIZ, f), 'utf8'), ctx, { filename: f });
+correr('js/config.js');
 const C = ctx.window.DN_CONFIG;
-const DN = ctx.window.DN;
-const AUTOS = DN.recientes();
-const esc = DN.esc;
+const SUPABASE = !!(C.supabaseUrl && C.supabaseKey);
 
 const SITIO = C.sitio.replace(/\/?$/, '/');
 const BASE = process.argv.includes('--local') ? '/' : new URL(SITIO).pathname;
 const HOY = new Date().toISOString().slice(0, 10);
 const TIPOS = ['auto', 'camioneta', 'utilitario'];
 
-validar();
+let DN, AUTOS, esc;
+
+async function main() {
+  // ---- Datos ----
+  let filas = null;
+  if (SUPABASE) {
+    filas = await leerSupabase();
+    ctx.window.DN_AUTOS = filas.map(deFila).filter(Boolean);
+  } else {
+    correr('js/autos.js');
+  }
+  correr('js/common.js');
+  DN = ctx.window.DN;
+  esc = DN.esc;
+  if (!SUPABASE) validar(DN.autos);
+
+  const hash = crypto.createHash('sha256').update(JSON.stringify(filas || DN.autos)).digest('hex').slice(0, 16);
+  if (process.env.SOLO_SI_CAMBIO) {
+    const anterior = await fetch(SITIO + 'estado.json', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+    if (anterior && anterior.hash === hash) {
+      console.log('Los autos no cambiaron desde la última publicación, no hay nada para publicar.');
+      salida('cambio', 'false');
+      return;
+    }
+  }
+
+  fs.rmSync(SALIDA, { recursive: true, force: true });
+  for (const dir of ESTATICOS) fs.cpSync(path.join(RAIZ, dir), path.join(SALIDA, dir), { recursive: true });
+  if (SUPABASE) {
+    await bajarFotos(DN.autos);
+    // El navegador (filtros del stock, galería, formulario) usa estos mismos datos.
+    escribir('js/autos.js', '// Generado por scripts/generar.js desde Supabase.\nwindow.DN_AUTOS = ' +
+      JSON.stringify(DN.autos.map(({ _fotos, ...a }) => a), null, 1) + ';\n');
+  }
+  AUTOS = DN.recientes();
+
+  generarPaginas();
+  escribir('estado.json', JSON.stringify({ hash, generado: new Date().toISOString(), autos: AUTOS.length }) + '\n');
+  salida('cambio', 'true');
+  console.log(`Listo: ${AUTOS.length} autos (${SUPABASE ? 'Supabase' : 'js/autos.js'}). indexar=${C.indexar} → _site/`);
+}
+
+// ---- Supabase ----
+
+async function leerSupabase() {
+  // Las claves nuevas (sb_publishable_...) van solo en apikey; las viejas (anon, JWT) también en Authorization.
+  const headers = { apikey: C.supabaseKey };
+  if (!C.supabaseKey.startsWith('sb_')) headers.Authorization = 'Bearer ' + C.supabaseKey;
+  const res = await fetch(`${C.supabaseUrl}/rest/v1/autos?select=*&order=created_at.desc`, { headers });
+  if (!res.ok) throw new Error(`Supabase respondió ${res.status}: ${await res.text()}`);
+  return res.json();
+}
+
+// Fila de la base → mismo formato que js/autos.js. Si a un auto le falta algo, se saltea (no rompe la web).
+function deFila(r) {
+  const falta = ['slug', 'marca', 'modelo', 'anio', 'combustible', 'transmision'].filter((k) => r[k] === null || r[k] === '');
+  if (falta.length || !TIPOS.includes(r.tipo)) {
+    console.warn(`Aviso: se saltea el auto ${r.id} (${r.marca} ${r.modelo}), falta: ${falta.join(', ') || 'tipo'}`);
+    return null;
+  }
+  const dir = `img/autos/${r.slug}/`;
+  return {
+    id: r.slug,
+    marca: r.marca, modelo: r.modelo, anio: r.anio, km: r.km, tipo: r.tipo,
+    combustible: r.combustible, transmision: r.transmision,
+    traccion: r.traccion || null, motor: r.motor || null, color: r.color || null,
+    puertas: r.puertas || null, duenos: r.duenos || null,
+    precio: r.precio || null,
+    etiqueta: r.estado === 'reservado' ? 'RESERVADO' : r.etiqueta || '',
+    reservado: r.estado === 'reservado',
+    destacado: r.destacado,
+    ingreso: r.created_at.slice(0, 10),
+    actualizado: r.updated_at.slice(0, 10),
+    patenteAlDia: r.patente_al_dia, libreDeMultas: r.libre_de_multas, aceptaPermuta: r.acepta_permuta,
+    descripcion: r.descripcion || '',
+    fotos: [], miniaturas: [],
+    // Rutas en el bucket; bajarFotos() completa fotos/miniaturas con las que se pudieron bajar.
+    _fotos: (r.fotos || []).map((p) => ({ p, archivo: dir + path.posix.basename(p) }))
+  };
+}
+
+async function bajarFotos(autos) {
+  const url = (p) => `${C.supabaseUrl}/storage/v1/object/public/fotos/${p.split('/').map(encodeURIComponent).join('/')}`;
+  const bajar = async (p, destino) => {
+    const res = await fetch(url(p));
+    if (!res.ok) return false;
+    const f = path.join(SALIDA, destino);
+    fs.mkdirSync(path.dirname(f), { recursive: true });
+    fs.writeFileSync(f, Buffer.from(await res.arrayBuffer()));
+    return true;
+  };
+  const tareas = autos.flatMap((a) => a._fotos.map((f) => async () => {
+    const chica = f.archivo.replace(/\.jpg$/, '_m.jpg');
+    f.ok = await bajar(f.p, f.archivo);
+    f.chica = f.ok && (await bajar(f.p.replace(/\.jpg$/, '_m.jpg'), chica)) ? chica : f.archivo;
+    if (!f.ok) console.warn(`Aviso: no se pudo bajar la foto ${f.p} de ${a.id}`);
+  }));
+  // De a 6 descargas a la vez.
+  const cola = tareas.slice();
+  await Promise.all(Array.from({ length: 6 }, async () => { while (cola.length) await cola.shift()(); }));
+  for (const a of autos) {
+    const ok = a._fotos.filter((f) => f.ok);
+    a.fotos = ok.map((f) => f.archivo);
+    a.miniaturas = ok.map((f) => f.chica);
+  }
+}
+
+function salida(clave, valor) {
+  if (process.env.GITHUB_OUTPUT) fs.appendFileSync(process.env.GITHUB_OUTPUT, `${clave}=${valor}\n`);
+}
 
 // ---- Plantillas: {{ clave.sub }} y {{> parcial }} ----
 
@@ -154,7 +265,7 @@ function autoLd(a, url) {
       '@type': 'Offer',
       price: a.precio,
       priceCurrency: 'USD',
-      availability: 'https://schema.org/InStock',
+      availability: a.reservado ? 'https://schema.org/LimitedAvailability' : 'https://schema.org/InStock',
       itemCondition: 'https://schema.org/UsedCondition',
       url,
       seller: { '@type': 'AutoDealer', '@id': NEGOCIO_ID, name: 'DN Automóviles', url: SITIO }
@@ -164,49 +275,88 @@ function autoLd(a, url) {
 
 // ---- Páginas ----
 
-fs.rmSync(SALIDA, { recursive: true, force: true });
-for (const dir of ESTATICOS) fs.cpSync(path.join(RAIZ, dir), path.join(SALIDA, dir), { recursive: true });
+function generarPaginas() {
+  // Inicio
+  const destacado = AUTOS.find((a) => a.destacado) || AUTOS[0];
+  pagina('index.html', '', {
+    titulo: 'Autos usados en Las Piedras, Canelones | DN Automóviles',
+    descripcion: 'Automotora en Las Piedras, Canelones: autos usados, camionetas y utilitarios. Compramos tu auto al día o con deuda, permutas y entrega a domicilio.',
+    jsonld: jsonld(negocioLd, { '@context': 'https://schema.org', '@type': 'WebSite', name: 'DN Automóviles', url: SITIO, inLanguage: 'es-UY' }),
+    js: ['common'],
+    destacado: destacado ? {
+      href: DN.autoUrl(destacado, './'),
+      media: DN.media(destacado, 0, { detalle: true, raiz: './', eager: true }),
+      clase: destacado.fotos && destacado.fotos.length ? ' has-photo' : '',
+      caption: esc(DN.nombre(destacado) + ' · ' + DN.precio(destacado))
+    } : { href: './autos/', media: '', clase: '', caption: 'Stock destacado' },
+    recientes: AUTOS.slice(0, 3).map((a) => DN.card(a, { compacta: true, raiz: './' })).join('')
+  });
 
-// Inicio
-const destacado = AUTOS.find((a) => a.destacado) || AUTOS[0];
-pagina('index.html', '', {
-  titulo: 'Autos usados en Las Piedras, Canelones | DN Automóviles',
-  descripcion: 'Automotora en Las Piedras, Canelones: autos usados, camionetas y utilitarios. Compramos tu auto al día o con deuda, permutas y entrega a domicilio.',
-  jsonld: jsonld(negocioLd, { '@context': 'https://schema.org', '@type': 'WebSite', name: 'DN Automóviles', url: SITIO, inLanguage: 'es-UY' }),
-  js: ['common'],
-  destacado: destacado ? {
-    href: DN.autoUrl(destacado, './'),
-    media: DN.media(destacado, 0, { detalle: true, raiz: './', eager: true }),
-    clase: destacado.fotos && destacado.fotos.length ? ' has-photo' : '',
-    caption: esc(DN.nombre(destacado) + ' · ' + DN.precio(destacado))
-  } : { href: './autos/', media: '', clase: '', caption: 'Stock destacado' },
-  recientes: AUTOS.slice(0, 3).map((a) => DN.card(a, { compacta: true, raiz: './' })).join('')
-});
+  // Stock
+  pagina('autos.html', 'autos/', {
+    titulo: 'Autos usados en venta en Las Piedras | DN Automóviles',
+    descripcion: 'Stock actualizado de autos usados, camionetas y utilitarios en Las Piedras, Canelones. Precios en dólares, permutas y entrega a domicilio.',
+    jsonld: jsonld(migas([['Inicio', SITIO], ['Autos disponibles', SITIO + 'autos/']])),
+    nav: { autos: ' aria-current="page"', vende: '' },
+    js: ['config', 'autos', 'common', 'stock'],
+    conteo: AUTOS.length === 1 ? '1 vehículo disponible' : AUTOS.length + ' vehículos disponibles',
+    grilla: AUTOS.map((a) => DN.card(a, { raiz: '../' })).join('')
+  });
 
-// Stock
-pagina('autos.html', 'autos/', {
-  titulo: 'Autos usados en venta en Las Piedras | DN Automóviles',
-  descripcion: 'Stock actualizado de autos usados, camionetas y utilitarios en Las Piedras, Canelones. Precios en dólares, permutas y entrega a domicilio.',
-  jsonld: jsonld(migas([['Inicio', SITIO], ['Autos disponibles', SITIO + 'autos/']])),
-  nav: { autos: ' aria-current="page"', vende: '' },
-  js: ['config', 'autos', 'common', 'stock'],
-  conteo: AUTOS.length === 1 ? '1 vehículo disponible' : AUTOS.length + ' vehículos disponibles',
-  grilla: AUTOS.map((a) => DN.card(a, { raiz: '../' })).join('')
-});
+  // Un detalle por auto
+  for (const a of AUTOS) generarAuto(a);
 
-// Un detalle por auto
-for (const a of AUTOS) {
+  // Vendé tu auto
+  pagina('vende.html', 'vende-tu-auto/', {
+    titulo: 'Vendé o permutá tu auto, al día o con deuda | DN Automóviles',
+    descripcion: 'Compramos autos usados en Las Piedras y Canelones, al día o con deuda. Completá los datos y recibí por WhatsApp una propuesta de compra o permuta.',
+    jsonld: jsonld(migas([['Inicio', SITIO], ['Vendé tu auto', SITIO + 'vende-tu-auto/']])),
+    nav: { autos: '', vende: ' aria-current="page"' },
+    js: ['config', 'autos', 'common', 'vende']
+  });
+
+  // 404 (GitHub Pages lo sirve para cualquier URL que no exista, ej. un auto vendido)
+  pagina('404.html', '404.html', {
+    titulo: 'Página no encontrada | DN Automóviles',
+    descripcion: 'La página que buscás no existe. Mirá el stock de autos usados de DN Automóviles en Las Piedras.',
+    robots: '<meta name="robots" content="noindex">',
+    js: ['common']
+  });
+
+  // Panel del dueño
+  pagina('admin.html', 'admin/', {
+    titulo: 'Panel · DN Automóviles',
+    descripcion: 'Panel de administración de DN Automóviles.',
+    robots: '<meta name="robots" content="noindex, nofollow">',
+    js: ['config', 'common']
+  });
+
+  // sitemap.xml y robots.txt
+  const urls = [
+    [SITIO, HOY, '1.0'],
+    [SITIO + 'autos/', HOY, '0.9'],
+    ...AUTOS.map((a) => [SITIO + `autos/${a.id}/`, a.actualizado || a.ingreso || HOY, '0.8']),
+    [SITIO + 'vende-tu-auto/', HOY, '0.7']
+  ];
+  escribir('sitemap.xml', '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
+    urls.map(([loc, lastmod, prio]) => `  <url><loc>${loc}</loc><lastmod>${lastmod}</lastmod><priority>${prio}</priority></url>`).join('\n') +
+    '\n</urlset>\n');
+  escribir('robots.txt', `User-agent: *\nAllow: /\nDisallow: ${BASE}admin/\n\nSitemap: ${SITIO}sitemap.xml\n`);
+}
+
+function generarAuto(a) {
   const ruta = `autos/${a.id}/`;
   const url = SITIO + ruta;
   const raiz = '../../';
   const nombre = DN.nombre(a);
   const km = DN.miles(a.km) + ' km';
   const fotos = a.fotos || [];
+  const chicas = a.miniaturas || fotos;
   const total = fotos.length || DN.VISTAS.length;
 
   const thumbs = Array.from({ length: total }, (_, i) => {
     const dentro = fotos.length
-      ? `<img class="media-fill" src="${esc(raiz + fotos[i])}" alt="" loading="lazy">`
+      ? `<img class="media-fill" src="${esc(raiz + (chicas[i] || fotos[i]))}" alt="" loading="lazy">`
       : DN.VISTAS[i].toUpperCase();
     const label = fotos.length ? `Ver foto ${i + 1}` : `Ver foto: ${DN.VISTAS[i]}`;
     return `<button type="button" class="thumb" data-i="${i}" aria-label="${label}" aria-current="${i === 0}">${dentro}</button>`;
@@ -214,7 +364,7 @@ for (const a of AUTOS) {
 
   const claves = [
     ['KILOMETRAJE', km], ['COMBUSTIBLE', a.combustible], ['TRANSMISIÓN', a.transmision],
-    a.traccion ? ['TRACCIÓN', a.traccion] : ['MOTOR', a.motor]
+    a.traccion ? ['TRACCIÓN', a.traccion] : ['MOTOR', a.motor || '—']
   ].map(([l, v]) => `<div class="keyspec"><span class="keyspec__l">${l}</span><span class="keyspec__v">${esc(v)}</span></div>`).join('');
 
   const ficha = [
@@ -226,6 +376,7 @@ for (const a of AUTOS) {
     .map(([l, v]) => `<div><dt>${l}</dt><dd>${esc(v)}</dd></div>`).join('');
 
   const chips = [
+    a.reservado && '<span class="chip chip--warn">Reservado</span>',
     a.patenteAlDia === true && '<span class="chip chip--ok">Patente al día</span>',
     a.patenteAlDia === false && '<span class="chip chip--warn">Patente con deuda</span>',
     a.libreDeMultas === true && '<span class="chip chip--ok">Libre de multas</span>',
@@ -238,7 +389,7 @@ for (const a of AUTOS) {
     .sort((x, y) => (y.tipo === a.tipo) - (x.tipo === a.tipo))
     .slice(0, 3)
     .map((o) => `<a class="mini-card" href="${DN.autoUrl(o, raiz)}">` +
-      `<div class="mini-card__media">${DN.media(o, 0, { raiz })}</div>` +
+      `<div class="mini-card__media">${DN.media(o, 0, { raiz, chica: true })}</div>` +
       `<div class="mini-card__txt"><strong>${esc(DN.nombre(o))}</strong>` +
       `<span>${o.anio} · ${DN.miles(o.km)} km</span><b>${DN.precio(o)}</b></div></a>`).join('');
 
@@ -278,42 +429,11 @@ for (const a of AUTOS) {
   });
 }
 
-// Vendé tu auto
-pagina('vende.html', 'vende-tu-auto/', {
-  titulo: 'Vendé o permutá tu auto, al día o con deuda | DN Automóviles',
-  descripcion: 'Compramos autos usados en Las Piedras y Canelones, al día o con deuda. Completá los datos y recibí por WhatsApp una propuesta de compra o permuta.',
-  jsonld: jsonld(migas([['Inicio', SITIO], ['Vendé tu auto', SITIO + 'vende-tu-auto/']])),
-  nav: { autos: '', vende: ' aria-current="page"' },
-  js: ['config', 'autos', 'common', 'vende']
-});
+// ---- Validación de js/autos.js: mejor que falle acá y no que se publique roto ----
 
-// 404 (GitHub Pages lo sirve para cualquier URL que no exista, ej. un auto vendido)
-pagina('404.html', '404.html', {
-  titulo: 'Página no encontrada | DN Automóviles',
-  descripcion: 'La página que buscás no existe. Mirá el stock de autos usados de DN Automóviles en Las Piedras.',
-  robots: '<meta name="robots" content="noindex">',
-  js: ['common']
-});
-
-// sitemap.xml y robots.txt
-const urls = [
-  [SITIO, HOY, '1.0'],
-  [SITIO + 'autos/', HOY, '0.9'],
-  ...AUTOS.map((a) => [SITIO + `autos/${a.id}/`, a.ingreso || HOY, '0.8']),
-  [SITIO + 'vende-tu-auto/', HOY, '0.7']
-];
-escribir('sitemap.xml', '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
-  urls.map(([loc, lastmod, prio]) => `  <url><loc>${loc}</loc><lastmod>${lastmod}</lastmod><priority>${prio}</priority></url>`).join('\n') +
-  '\n</urlset>\n');
-escribir('robots.txt', `User-agent: *\nAllow: /\n\nSitemap: ${SITIO}sitemap.xml\n`);
-
-console.log(`Listo: ${AUTOS.length} autos, ${urls.length} URLs en el sitemap. indexar=${C.indexar} → _site/`);
-
-// ---- Validación del stock: mejor que falle acá y no que se publique roto ----
-
-function validar() {
+function validar(autos) {
   const ids = new Set();
-  for (const a of DN.autos) {
+  for (const a of autos) {
     const quien = a.id || `${a.marca} ${a.modelo}`;
     if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(a.id || '')) throw new Error(`${quien}: el id tiene que ser minúsculas y guiones (ej. toyota-hilux-2018)`);
     if (ids.has(a.id)) throw new Error(`${a.id}: id repetido`);
@@ -327,3 +447,8 @@ function validar() {
     }
   }
 }
+
+main().catch((e) => {
+  console.error('Error: ' + e.message);
+  process.exit(1);
+});

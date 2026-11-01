@@ -1,0 +1,305 @@
+// Panel del dueño (/admin/): login, lista de autos, alta/edición/baja y fotos.
+// Los permisos los pone supabase/schema.sql: solo los emails de la tabla admins pueden escribir.
+// La web pública no lee de acá en vivo: scripts/generar.js la regenera cada 15 minutos si hubo cambios.
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm';
+
+const C = window.DN_CONFIG;
+const DN = window.DN;
+const BUCKET = 'fotos';
+const $ = (s) => document.querySelector(s);
+const esc = DN.esc;
+
+const form = $('#f-auto');
+let sb;
+let autos = [];
+let filtro = 'todos';
+// Editor: auto que se edita (null = nuevo), fotos actuales (rutas en el bucket),
+// las subidas en esta edición (se borran si se cancela) y las quitadas (se borran al guardar).
+let actual = null;
+let fotos = [];
+let nuevas = [];
+let quitadas = [];
+let subiendo = 0;
+
+if (!C.supabaseUrl || !C.supabaseKey) {
+  $('#cargando').hidden = true;
+  $('#sin-config').hidden = false;
+} else {
+  sb = createClient(C.supabaseUrl, C.supabaseKey);
+  iniciar();
+}
+
+async function iniciar() {
+  const { data } = await sb.auth.getSession();
+  $('#cargando').hidden = true;
+  if (data.session) await entrar();
+  else vista('login');
+}
+
+function vista(nombre) {
+  for (const v of ['login', 'lista', 'editor']) $('#v-' + v).hidden = v !== nombre;
+  $('#admin-nav').hidden = nombre === 'login';
+  window.scrollTo(0, 0);
+}
+
+function aviso(texto) {
+  const t = $('#toast');
+  t.textContent = texto;
+  t.hidden = false;
+  clearTimeout(aviso.t);
+  aviso.t = setTimeout(() => { t.hidden = true; }, 5000);
+}
+
+function error(el, texto) {
+  el.textContent = texto || '';
+  el.hidden = !texto;
+}
+
+// ---- Login ----
+
+$('#f-login').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const f = e.target;
+  error($('#login-error'));
+  const { error: err } = await sb.auth.signInWithPassword({ email: f.email.value.trim(), password: f.password.value });
+  if (err) return error($('#login-error'), 'Email o contraseña incorrectos.');
+  await entrar();
+});
+
+async function entrar() {
+  const { data: esAdmin } = await sb.rpc('es_admin');
+  if (!esAdmin) {
+    await sb.auth.signOut();
+    vista('login');
+    return error($('#login-error'), 'Este usuario no tiene permiso para editar. Hay que agregar su email en la tabla admins de Supabase.');
+  }
+  await cargarLista();
+}
+
+$('#salir').addEventListener('click', async () => {
+  await sb.auth.signOut();
+  vista('login');
+});
+
+// ---- Lista ----
+
+async function cargarLista() {
+  const { data, error: err } = await sb.from('autos').select('*').order('created_at', { ascending: false });
+  if (err) return aviso('No se pudo cargar la lista: ' + err.message);
+  autos = data;
+  pintarLista();
+  vista('lista');
+}
+
+function urlFoto(ruta, chica) {
+  return sb.storage.from(BUCKET).getPublicUrl(chica ? ruta.replace(/\.jpg$/, '_m.jpg') : ruta).data.publicUrl;
+}
+
+function pintarLista() {
+  const lista = autos.filter((a) => filtro === 'todos' || (filtro === 'oculto' ? !a.publicado : a.estado === filtro));
+  $('#lista').innerHTML = lista.map((a) => {
+    const media = a.fotos.length
+      ? `<img class="media-fill" src="${esc(urlFoto(a.fotos[0], true))}" alt="" loading="lazy">`
+      : DN.silueta({ tipo: a.tipo });
+    const chips = [
+      a.estado === 'reservado' && '<span class="chip chip--warn">Reservado</span>',
+      a.estado === 'vendido' && '<span class="chip">Vendido</span>',
+      a.estado === 'disponible' && '<span class="chip chip--ok">Disponible</span>',
+      !a.publicado && '<span class="chip">Oculto</span>',
+      a.destacado && '<span class="chip">En el inicio</span>',
+      !a.fotos.length && '<span class="chip chip--warn">Sin fotos</span>'
+    ].filter(Boolean).join('');
+    return `<button type="button" class="admin-item" data-id="${a.id}">
+      <span class="admin-item__media">${media}</span>
+      <span class="admin-item__txt">
+        <strong>${esc(a.marca + ' ' + a.modelo + ' ' + a.anio)}</strong>
+        <span>${a.precio ? 'U$S ' + DN.miles(a.precio) : 'Consultar'} · ${DN.miles(a.km)} km</span>
+        <span class="chips">${chips}</span>
+      </span></button>`;
+  }).join('') || '<p class="admin-nota">No hay autos acá todavía.</p>';
+}
+
+$('#filtro').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-f]');
+  if (!b) return;
+  filtro = b.dataset.f;
+  document.querySelectorAll('#filtro [data-f]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+  pintarLista();
+});
+
+$('#lista').addEventListener('click', (e) => {
+  const b = e.target.closest('.admin-item');
+  if (b) abrir(autos.find((a) => String(a.id) === b.dataset.id));
+});
+
+$('#nuevo').addEventListener('click', () => abrir(null));
+
+// ---- Editor ----
+
+const BOOLEANOS = ['publicado', 'destacado', 'acepta_permuta'];
+const TRIESTADO = ['patente_al_dia', 'libre_de_multas'];
+const NUMEROS = ['anio', 'km', 'puertas', 'duenos', 'precio'];
+
+function abrir(a) {
+  actual = a;
+  form.reset();
+  error($('#ed-error'));
+  fotos = a ? a.fotos.slice() : [];
+  nuevas = [];
+  quitadas = [];
+  if (a) {
+    for (const el of form.elements) {
+      if (!el.name || !(el.name in a)) continue;
+      const v = a[el.name];
+      if (el.type === 'checkbox') el.checked = !!v;
+      else el.value = v === null || v === undefined ? '' : String(v);
+    }
+  }
+  $('#ed-titulo').textContent = a ? `${a.marca} ${a.modelo} ${a.anio}` : 'Cargar auto';
+  $('#ed-ver').hidden = !a || !a.publicado || a.estado === 'vendido';
+  if (a) $('#ed-ver').href = C.sitio + 'autos/' + a.slug + '/';
+  $('#borrar').hidden = !a;
+  pintarFotos();
+  vista('editor');
+}
+
+function datosDelForm() {
+  const fila = {};
+  for (const el of form.elements) {
+    if (!el.name) continue;
+    if (BOOLEANOS.includes(el.name)) fila[el.name] = el.checked;
+    else if (TRIESTADO.includes(el.name)) fila[el.name] = el.value === '' ? null : el.value === 'true';
+    else if (NUMEROS.includes(el.name)) fila[el.name] = el.value === '' ? null : Math.round(Number(el.value));
+    else fila[el.name] = el.value.trim() || null;
+  }
+  if (fila.etiqueta) fila.etiqueta = fila.etiqueta.toUpperCase();
+  if (fila.km === null) fila.km = 0;
+  fila.fotos = fotos;
+  return fila;
+}
+
+function slugDe(f) {
+  return `${f.marca} ${f.modelo} ${f.anio}`.toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+}
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  error($('#ed-error'));
+  if (subiendo) return error($('#ed-error'), 'Esperá a que terminen de subir las fotos.');
+  const fila = datosDelForm();
+  const falta = ['marca', 'modelo', 'anio'].filter((k) => !fila[k]);
+  if (falta.length) return error($('#ed-error'), 'Completá: ' + falta.join(', ') + '.');
+
+  $('#guardar').disabled = true;
+  let err;
+  if (actual) {
+    ({ error: err } = await sb.from('autos').update(fila).eq('id', actual.id));
+  } else {
+    // El slug es la URL del auto y no cambia nunca. Si ya existe uno igual, se le agrega -2, -3...
+    const base = slugDe(fila);
+    for (let n = 1; n < 20; n++) {
+      ({ error: err } = await sb.from('autos').insert({ ...fila, slug: n === 1 ? base : `${base}-${n}` }));
+      if (!err || err.code !== '23505') break;
+    }
+  }
+  $('#guardar').disabled = false;
+  if (err) return error($('#ed-error'), 'No se pudo guardar: ' + err.message);
+
+  await borrarArchivos(quitadas);
+  nuevas = [];
+  aviso('Guardado. En unos 15 minutos se ve en la web.');
+  await cargarLista();
+});
+
+$('#cancelar').addEventListener('click', cancelar);
+$('#volver').addEventListener('click', cancelar);
+
+async function cancelar() {
+  // Las fotos subidas en esta edición no quedaron en ningún auto: se borran.
+  await borrarArchivos(nuevas);
+  nuevas = [];
+  vista('lista');
+}
+
+$('#borrar').addEventListener('click', async () => {
+  if (!confirm(`¿Borrar ${actual.marca} ${actual.modelo} ${actual.anio}? No se puede deshacer.\n\nSi se vendió, mejor cambiá el estado a "Vendido".`)) return;
+  const { error: err } = await sb.from('autos').delete().eq('id', actual.id);
+  if (err) return error($('#ed-error'), 'No se pudo borrar: ' + err.message);
+  await borrarArchivos([...actual.fotos, ...nuevas]);
+  aviso('Auto borrado.');
+  await cargarLista();
+});
+
+// ---- Fotos ----
+
+function pintarFotos() {
+  $('#fotos').innerHTML = fotos.map((ruta, i) => `
+    <div class="foto">
+      <img src="${esc(urlFoto(ruta, true))}" alt="Foto ${i + 1}">
+      ${i === 0 ? '<span class="foto__portada">PORTADA</span>' : ''}
+      <div class="foto__acciones">
+        <button type="button" data-accion="izq" data-i="${i}" aria-label="Mover a la izquierda"${i === 0 ? ' disabled' : ''}>←</button>
+        <button type="button" data-accion="quitar" data-i="${i}" aria-label="Quitar foto">✕</button>
+        <button type="button" data-accion="der" data-i="${i}" aria-label="Mover a la derecha"${i === fotos.length - 1 ? ' disabled' : ''}>→</button>
+      </div>
+    </div>`).join('');
+}
+
+$('#fotos').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-accion]');
+  if (!b) return;
+  const i = Number(b.dataset.i);
+  if (b.dataset.accion === 'quitar') quitadas.push(...fotos.splice(i, 1));
+  else {
+    const j = b.dataset.accion === 'izq' ? i - 1 : i + 1;
+    [fotos[i], fotos[j]] = [fotos[j], fotos[i]];
+  }
+  pintarFotos();
+});
+
+$('#f-fotos').addEventListener('change', async (e) => {
+  const archivos = [...e.target.files];
+  e.target.value = '';
+  const estado = $('#subiendo');
+  subiendo += archivos.length;
+  let hechas = 0;
+  for (const archivo of archivos) {
+    estado.hidden = false;
+    estado.textContent = `Subiendo foto ${++hechas} de ${archivos.length}…`;
+    try {
+      const ruta = `autos/${crypto.randomUUID()}.jpg`;
+      const [grande, chica] = await Promise.all([achicar(archivo, 1600, 0.82), achicar(archivo, 640, 0.78)]);
+      for (const [r, blob] of [[ruta, grande], [ruta.replace(/\.jpg$/, '_m.jpg'), chica]]) {
+        const { error: err } = await sb.storage.from(BUCKET).upload(r, blob, { contentType: 'image/jpeg', cacheControl: '31536000' });
+        if (err) throw err;
+      }
+      fotos.push(ruta);
+      nuevas.push(ruta);
+      pintarFotos();
+    } catch (err) {
+      aviso(`No se pudo subir ${archivo.name}: ${err.message || err}`);
+    }
+    subiendo--;
+  }
+  estado.hidden = true;
+});
+
+// Achica la foto del celular (3–10 MB) a JPG de ~200 KB, respetando la orientación.
+async function achicar(archivo, max, calidad) {
+  const bmp = await createImageBitmap(archivo, { imageOrientation: 'from-image' });
+  const k = Math.min(1, max / Math.max(bmp.width, bmp.height));
+  const c = document.createElement('canvas');
+  c.width = Math.round(bmp.width * k);
+  c.height = Math.round(bmp.height * k);
+  c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+  const blob = await new Promise((r) => c.toBlob(r, 'image/jpeg', calidad));
+  if (!blob) throw new Error('formato de imagen no soportado');
+  return blob;
+}
+
+async function borrarArchivos(rutas) {
+  if (!rutas.length) return;
+  await sb.storage.from(BUCKET).remove(rutas.flatMap((r) => [r, r.replace(/\.jpg$/, '_m.jpg')]));
+}

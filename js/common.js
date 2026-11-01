@@ -36,10 +36,11 @@
     if (!detalle) svg = svg.replace(/<path [^>]*class="silueta__det"\/>/, '');
     return '<svg class="silueta" viewBox="0 0 200 80" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + svg + '</svg>';
   }
-  // Foto i del auto (o la silueta si no tiene). o: { detalle, raiz, alt, eager }
+  // Foto i del auto (o la silueta si no tiene). o: { detalle, raiz, alt, eager, chica (miniatura, para tarjetas) }
   function media(a, i, o) {
     o = o || {};
-    var src = a.fotos && a.fotos[i || 0];
+    var lista = o.chica && a.miniaturas && a.miniaturas.length ? a.miniaturas : a.fotos;
+    var src = lista && lista[i || 0];
     if (!src) return silueta(a, o.detalle);
     return '<img class="media-fill" src="' + esc(raiz(o.raiz) + src) + '" alt="' + esc(o.alt || nombre(a)) + '"' +
       (o.eager ? ' fetchpriority="high"' : ' loading="lazy"') + '>';
@@ -56,7 +57,7 @@
       ? '<div class="car-card__title"><strong class="car-card__name">' + esc(nombre(a)) + '</strong><span class="car-card__meta">' + esc(meta(a)) + '</span></div>'
       : '<strong class="car-card__name">' + esc(nombre(a)) + '</strong><div class="specs3">' + spec('AÑO', a.anio) + spec('KM', miles(a.km)) + spec('MOTOR', a.combustible) + '</div>';
     return '<a class="car-card" href="' + autoUrl(a, o.raiz) + '">' +
-      '<div class="car-card__media">' + media(a, 0, { raiz: o.raiz }) + tag + '</div>' +
+      '<div class="car-card__media">' + media(a, 0, { raiz: o.raiz, chica: true }) + tag + '</div>' +
       '<div class="car-card__body">' + info +
       '<div class="price-row"><span class="price">' + precio(a) + '</span><span class="price-row__cta">Ver detalle</span></div>' +
       '</div></a>';

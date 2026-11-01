@@ -1,0 +1,147 @@
+{{> head}}
+<body data-raiz="{{raiz}}">
+
+<header class="site-header">
+  <nav class="wrap nav" aria-label="Panel">
+    <a class="logo" href="{{raiz}}" aria-label="DN Automóviles, ver la web">
+      <span class="logo__dn chrome">DN</span>
+      <span class="logo__sub">AUTOMÓVILES</span>
+    </a>
+    <span class="admin-badge">PANEL</span>
+    <div class="admin-nav" id="admin-nav" hidden>
+      <a class="btn btn--ghost btn--sm" href="{{raiz}}" target="_blank" rel="noopener">Ver la web</a>
+      <button class="btn btn--ghost btn--sm" type="button" id="salir">Salir</button>
+    </div>
+  </nav>
+</header>
+
+<main class="wrap admin-main">
+
+  <p class="admin-aviso" id="sin-config" hidden>Falta conectar Supabase: completá <code>supabaseUrl</code> y <code>supabaseKey</code> en <code>js/config.js</code>.</p>
+  <p class="admin-aviso" id="cargando">Cargando…</p>
+
+  <section class="admin-login" id="v-login" hidden>
+    <h1>Entrá al panel</h1>
+    <form class="fs-panel" id="f-login">
+      <label class="field">Email
+        <input class="input" type="email" name="email" autocomplete="username" required>
+      </label>
+      <label class="field">Contraseña
+        <input class="input" type="password" name="password" autocomplete="current-password" required>
+      </label>
+      <button class="btn btn--primary" type="submit">Entrar</button>
+      <p class="admin-error" id="login-error" hidden></p>
+    </form>
+  </section>
+
+  <section class="admin-seccion" id="v-lista" hidden>
+    <div class="admin-head">
+      <div>
+        <span class="eyebrow">STOCK</span>
+        <h1>Tus autos</h1>
+      </div>
+      <button class="btn btn--primary" type="button" id="nuevo">+ Cargar auto</button>
+    </div>
+    <div class="tabs" role="group" aria-label="Filtrar" id="filtro">
+      <button type="button" class="pill" data-f="todos" aria-pressed="true">Todos</button>
+      <button type="button" class="pill" data-f="disponible" aria-pressed="false">Disponibles</button>
+      <button type="button" class="pill" data-f="reservado" aria-pressed="false">Reservados</button>
+      <button type="button" class="pill" data-f="vendido" aria-pressed="false">Vendidos</button>
+      <button type="button" class="pill" data-f="oculto" aria-pressed="false">Ocultos</button>
+    </div>
+    <p class="admin-nota">Lo que cargues o cambies aparece en la web en unos 15 minutos.</p>
+    <div class="admin-lista" id="lista"></div>
+  </section>
+
+  <section class="admin-seccion" id="v-editor" hidden>
+    <div class="admin-head">
+      <div>
+        <button class="link-back" type="button" id="volver">← Volver a la lista</button>
+        <h1 id="ed-titulo">Cargar auto</h1>
+      </div>
+      <a class="link-arrow" id="ed-ver" href="#" target="_blank" rel="noopener" hidden>Ver en la web</a>
+    </div>
+
+    <form class="sell__form admin-form" id="f-auto" novalidate>
+      <fieldset class="fs-panel">
+        <legend>1 · EL AUTO</legend>
+        <div class="fields">
+          <label class="field">Marca *<input class="input" name="marca" placeholder="Ej: Chevrolet" autocomplete="off" required></label>
+          <label class="field">Modelo y versión *<input class="input" name="modelo" placeholder="Ej: Onix LT 1.4" autocomplete="off" required></label>
+          <label class="field">Año *<input class="input" name="anio" type="number" inputmode="numeric" min="1950" max="2100" placeholder="Ej: 2019" required></label>
+          <label class="field">Kilómetros *<input class="input" name="km" type="number" inputmode="numeric" min="0" placeholder="Ej: 64000" required></label>
+          <label class="field">Tipo
+            <select class="input" name="tipo"><option value="auto">Auto</option><option value="camioneta">Camioneta</option><option value="utilitario">Utilitario</option></select>
+          </label>
+          <label class="field">Combustible
+            <select class="input" name="combustible"><option>Nafta</option><option>Diésel</option><option>Híbrido</option><option>Eléctrico</option><option>GNC</option></select>
+          </label>
+          <label class="field">Transmisión
+            <select class="input" name="transmision"><option>Manual</option><option>Automática</option></select>
+          </label>
+          <label class="field">Tracción<input class="input" name="traccion" placeholder="Ej: 4x4 (opcional)" autocomplete="off"></label>
+          <label class="field">Motor<input class="input" name="motor" placeholder="Ej: 1.4" autocomplete="off"></label>
+          <label class="field">Color<input class="input" name="color" placeholder="Ej: Gris" autocomplete="off"></label>
+          <label class="field">Puertas<input class="input" name="puertas" type="number" inputmode="numeric" min="1" max="6"></label>
+          <label class="field">Dueños<input class="input" name="duenos" type="number" inputmode="numeric" min="1" max="20"></label>
+        </div>
+      </fieldset>
+
+      <fieldset class="fs-panel">
+        <legend>2 · PRECIO Y PUBLICACIÓN</legend>
+        <div class="fields">
+          <label class="field">Precio en U$S<input class="input" name="precio" type="number" inputmode="numeric" min="1" placeholder="Vacío = &quot;Consultar&quot;"></label>
+          <label class="field">Cartelito<input class="input" name="etiqueta" list="etiquetas" placeholder="Ej: NUEVO INGRESO (opcional)" autocomplete="off"></label>
+          <label class="field">Estado
+            <select class="input" name="estado"><option value="disponible">Disponible</option><option value="reservado">Reservado</option><option value="vendido">Vendido (sale de la web)</option></select>
+          </label>
+        </div>
+        <datalist id="etiquetas"><option>NUEVO INGRESO</option><option>DESTACADO</option><option>OPORTUNIDAD</option><option>PERMUTA</option><option>ÚNICO DUEÑO</option></datalist>
+        <label class="check"><input type="checkbox" name="publicado" checked> Se ve en la web (destildado = borrador)</label>
+        <label class="check"><input type="checkbox" name="destacado"> Mostrarlo grande en el inicio</label>
+      </fieldset>
+
+      <fieldset class="fs-panel">
+        <legend>3 · PAPELES</legend>
+        <div class="fields">
+          <label class="field">Patente
+            <select class="input" name="patente_al_dia"><option value="">No mostrar</option><option value="true">Al día</option><option value="false">Con deuda</option></select>
+          </label>
+          <label class="field">Multas
+            <select class="input" name="libre_de_multas"><option value="">No mostrar</option><option value="true">Libre de multas</option><option value="false">Tiene multas</option></select>
+          </label>
+        </div>
+        <label class="check"><input type="checkbox" name="acepta_permuta" checked> Acepta permuta</label>
+      </fieldset>
+
+      <fieldset class="fs-panel">
+        <legend>4 · FOTOS</legend>
+        <span class="fs-panel__hint">La primera es la portada. Se achican solas antes de subir, podés mandarlas directo del celular.</span>
+        <div class="foto-grid" id="fotos"></div>
+        <label class="drop">+ Agregar fotos<input type="file" accept="image/*" multiple id="f-fotos"></label>
+        <p class="admin-nota" id="subiendo" hidden></p>
+      </fieldset>
+
+      <fieldset class="fs-panel">
+        <legend>5 · DESCRIPCIÓN</legend>
+        <label class="field">Estado general, service, cubiertas, detalles, equipamiento…
+          <textarea class="input" name="descripcion" rows="5"></textarea>
+        </label>
+      </fieldset>
+
+      <div class="admin-acciones">
+        <button class="btn btn--primary" type="submit" id="guardar">Guardar</button>
+        <button class="btn btn--ghost" type="button" id="cancelar">Cancelar</button>
+        <button class="btn btn--danger" type="button" id="borrar" hidden>Borrar auto</button>
+      </div>
+      <p class="admin-error" id="ed-error" hidden></p>
+    </form>
+  </section>
+
+</main>
+
+<div class="toast" id="toast" role="status" hidden></div>
+<script type="module" src="{{raiz}}js/admin.js"></script>
+
+</body>
+</html>
