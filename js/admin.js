@@ -38,6 +38,16 @@ async function iniciar() {
   else vista('login');
 }
 
+// GitHub Pages deja que el navegador guarde cada página 10 minutos: desde el panel,
+// los links a la web agregan ?v=<hora> para abrir siempre lo recién publicado.
+document.addEventListener('click', (e) => {
+  const a = e.target.closest('a[data-fresco]');
+  if (!a) return;
+  const url = new URL(a.href, location.href);
+  url.searchParams.set('v', Date.now());
+  a.href = url.toString();
+});
+
 function vista(nombre) {
   for (const v of ['login', 'lista', 'editor']) $('#v-' + v).hidden = v !== nombre;
   $('#admin-nav').hidden = nombre === 'login';
