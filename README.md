@@ -7,7 +7,7 @@ Sitio de DN Automóviles (Las Piedras, Canelones): stock de autos usados, ficha 
 ## Cómo funciona
 
 - La web es estática (GitHub Pages, gratis). `scripts/generar.js` (Node, sin dependencias) arma todas las páginas, una por auto, con SEO.
-- Los autos y las fotos viven en [Supabase](https://supabase.com) (plan gratis). La web no lo consulta en vivo: GitHub Actions regenera y publica en cada push y cada 15 minutos si hubo cambios desde el panel.
+- Los autos y las fotos viven en [Supabase](https://supabase.com) (plan gratis). La web no lo consulta en vivo: GitHub Actions regenera y publica en cada push, cada vez que se guarda un auto en el panel (aviso desde Supabase) y, como respaldo, cada 15 minutos si hubo cambios.
 - Sin Supabase configurado, usa los autos de ejemplo de `js/autos.js`.
 
 ## Configuración (`js/config.js`)
@@ -26,6 +26,7 @@ Sitio de DN Automóviles (Las Piedras, Canelones): stock de autos usados, ficha 
 4. En el SQL Editor, darle permiso de edición: `insert into public.admins (email) values ('email-del-dueño');`
 5. **Authentication → Sign In / Providers**: desactivar *Allow new users to sign up*.
 6. **Project Settings → API Keys**: *Project URL* y la clave pública → `js/config.js`.
+7. Publicación al instante (recomendado): seguir los pasos de `supabase/publicar.sql`. Sin eso, los cambios del panel dependen de la revisión programada de GitHub (cada 15 min en teoría, en la práctica se atrasa).
 
 La clave pública puede ir en el código: los permisos de `schema.sql` hacen que la web solo pueda leer autos publicados, y que editar requiera estar logueado con un email de la tabla `admins`.
 

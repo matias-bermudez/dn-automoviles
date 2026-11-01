@@ -49,7 +49,7 @@
       <button type="button" class="pill" data-f="vendido" aria-pressed="false">Vendidos</button>
       <button type="button" class="pill" data-f="oculto" aria-pressed="false">Ocultos</button>
     </div>
-    <p class="admin-nota">Lo que cargues o cambies aparece en la web en unos 15 minutos.</p>
+    <p class="admin-nota" id="nota-publicacion">Lo que guardes se publica solo en la web en unos minutos.</p>
     <div class="admin-lista" id="lista"></div>
   </section>
 
@@ -69,7 +69,7 @@
           <label class="field">Marca *<input class="input" name="marca" placeholder="Ej: Chevrolet" autocomplete="off" required></label>
           <label class="field">Modelo y versión *<input class="input" name="modelo" placeholder="Ej: Onix LT 1.4" autocomplete="off" required></label>
           <label class="field">Año *<input class="input" name="anio" type="number" inputmode="numeric" min="1950" max="2100" placeholder="Ej: 2019" required></label>
-          <label class="field">Kilómetros *<input class="input" name="km" type="number" inputmode="numeric" min="0" placeholder="Ej: 64000" required></label>
+          <label class="field">Kilómetros *<input class="input" name="km" type="text" inputmode="numeric" placeholder="Ej: 64.000" autocomplete="off" required></label>
           <label class="field">Tipo
             <select class="input" name="tipo"><option value="auto">Auto</option><option value="camioneta">Camioneta</option><option value="utilitario">Utilitario</option></select>
           </label>
@@ -90,7 +90,7 @@
       <fieldset class="fs-panel">
         <legend>2 · PRECIO Y PUBLICACIÓN</legend>
         <div class="fields">
-          <label class="field">Precio en U$S<input class="input" name="precio" type="number" inputmode="numeric" min="1" placeholder="Vacío = &quot;Consultar&quot;"></label>
+          <label class="field">Precio en U$S<input class="input" name="precio" type="text" inputmode="numeric" placeholder="Ej: 14.500 (vacío = &quot;Consultar&quot;)" autocomplete="off"></label>
           <label class="field">Cartelito<input class="input" name="etiqueta" list="etiquetas" placeholder="Ej: NUEVO INGRESO (opcional)" autocomplete="off"></label>
           <label class="field">Estado
             <select class="input" name="estado"><option value="disponible">Disponible</option><option value="reservado">Reservado</option><option value="vendido">Vendido (sale de la web)</option></select>

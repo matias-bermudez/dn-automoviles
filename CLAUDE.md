@@ -18,6 +18,9 @@ Sin `supabaseUrl`/`supabaseKey` en config.js usa `js/autos.js` (ejemplos). Esque
 (solo emails en la tabla `admins` pueden escribir). Ejemplos opcionales: `supabase/ejemplos.sql`.
 Fotos: el panel sube `autos/<uuid>.jpg` (1600px) y `autos/<uuid>_m.jpg` (640px, para tarjetas).
 Límites del plan gratis: 2 proyectos activos por cuenta; pausa a los 7 días sin uso (el cron lo evita).
+Publicación al guardar: trigger en `autos` (`supabase/publicar.sql`) → pg_net → `workflow_dispatch` de GitHub con un token fine-grained guardado en Vault (`github_token`). El cron de GitHub queda de respaldo: el primer día no corrió nunca, no confiar en él.
+El panel compara `updated_at` de cada auto con `estado.json` publicado y muestra "Publicándose en la web…".
+Proyecto Supabase: `dfunhdfvtmsmjdzpnhas` (org mb-webs, São Paulo). Admin: el email de Matías (tabla admins).
 
 Probar en local: `node scripts/generar.js --local && python3 -m http.server 8791 -d _site` → http://localhost:8791
 (el 8765 lo usa otro proyecto de Matías).
@@ -62,4 +65,5 @@ Chrome headless solo (`--screenshot`) no sirve para mobile: en Mac no baja de ~5
 - 2026-10-31: SEO (#10): generador estático, una página por auto, JSON-LD, sitemap, fuentes propias, deploy por Actions.
 - 2026-10-31: #8 cerrado (Matías probó los mensajes en laptop y 2 celulares).
 - 2026-10-31: #11 base de datos + panel con Supabase (misma arquitectura que KM39). Falta conectar el proyecto.
-- Pendiente: #11 (conectar Supabase) y #9 (datos reales + lanzamiento SEO).
+- 2026-10-31: Supabase conectado. Bug: km/precio con punto ("200.000") se guardaban como decimal → ahora campos de texto que toman solo dígitos.
+- Pendiente: #11 (token para publicar al guardar + prueba con fotos) y #9 (datos reales + lanzamiento SEO).

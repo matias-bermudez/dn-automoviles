@@ -84,11 +84,39 @@ $('#salir').addEventListener('click', async () => {
 // ---- Lista ----
 
 async function cargarLista() {
-  const { data, error: err } = await sb.from('autos').select('*').order('created_at', { ascending: false });
+  const [{ data, error: err }] = await Promise.all([
+    sb.from('autos').select('*').order('created_at', { ascending: false }),
+    leerPublicacion()
+  ]);
   if (err) return aviso('No se pudo cargar la lista: ' + err.message);
   autos = data;
   pintarLista();
   vista('lista');
+}
+
+// Cuándo se generó la web publicada (estado.json lo escribe scripts/generar.js).
+// Un auto modificado después de eso todavía no se ve en la web.
+let publicadoEn = null;
+async function leerPublicacion() {
+  try {
+    const r = await fetch(C.sitio + 'estado.json?t=' + Date.now(), { cache: 'no-store' });
+    publicadoEn = r.ok ? new Date((await r.json()).generado) : null;
+  } catch {
+    publicadoEn = null;
+  }
+}
+const pendiente = (a) => publicadoEn && new Date(a.updated_at) > publicadoEn;
+
+// Mientras haya cambios sin publicar, se vuelve a mirar cada 20 segundos.
+let revision;
+function revisarPublicacion() {
+  clearTimeout(revision);
+  if (!autos.some(pendiente)) return;
+  revision = setTimeout(async () => {
+    await leerPublicacion();
+    if (!$('#v-lista').hidden) pintarLista();
+    else revisarPublicacion();
+  }, 20000);
 }
 
 function urlFoto(ruta, chica) {
@@ -102,6 +130,7 @@ function pintarLista() {
       ? `<img class="media-fill" src="${esc(urlFoto(a.fotos[0], true))}" alt="" loading="lazy">`
       : DN.silueta({ tipo: a.tipo });
     const chips = [
+      pendiente(a) && '<span class="chip chip--warn">Publicándose en la web…</span>',
       a.estado === 'reservado' && '<span class="chip chip--warn">Reservado</span>',
       a.estado === 'vendido' && '<span class="chip">Vendido</span>',
       a.estado === 'disponible' && '<span class="chip chip--ok">Disponible</span>',
@@ -117,6 +146,7 @@ function pintarLista() {
         <span class="chips">${chips}</span>
       </span></button>`;
   }).join('') || '<p class="admin-nota">No hay autos acá todavía.</p>';
+  revisarPublicacion();
 }
 
 $('#filtro').addEventListener('click', (e) => {
@@ -138,7 +168,9 @@ $('#nuevo').addEventListener('click', () => abrir(null));
 
 const BOOLEANOS = ['publicado', 'destacado', 'acepta_permuta'];
 const TRIESTADO = ['patente_al_dia', 'libre_de_multas'];
-const NUMEROS = ['anio', 'km', 'puertas', 'duenos', 'precio'];
+const NUMEROS = ['anio', 'puertas', 'duenos'];
+// Se escriben como en Uruguay ("64.000", "U$S 14.500"): se toman solo los dígitos.
+const MONTOS = ['km', 'precio'];
 
 function abrir(a) {
   actual = a;
@@ -152,6 +184,7 @@ function abrir(a) {
       if (!el.name || !(el.name in a)) continue;
       const v = a[el.name];
       if (el.type === 'checkbox') el.checked = !!v;
+      else if (MONTOS.includes(el.name)) el.value = v ? DN.miles(v) : '';
       else el.value = v === null || v === undefined ? '' : String(v);
     }
   }
@@ -170,6 +203,7 @@ function datosDelForm() {
     if (BOOLEANOS.includes(el.name)) fila[el.name] = el.checked;
     else if (TRIESTADO.includes(el.name)) fila[el.name] = el.value === '' ? null : el.value === 'true';
     else if (NUMEROS.includes(el.name)) fila[el.name] = el.value === '' ? null : Math.round(Number(el.value));
+    else if (MONTOS.includes(el.name)) fila[el.name] = el.value.replace(/\D/g, '') ? Number(el.value.replace(/\D/g, '')) : null;
     else fila[el.name] = el.value.trim() || null;
   }
   if (fila.etiqueta) fila.etiqueta = fila.etiqueta.toUpperCase();
@@ -209,7 +243,7 @@ form.addEventListener('submit', async (e) => {
 
   await borrarArchivos(quitadas);
   nuevas = [];
-  aviso('Guardado. En unos 15 minutos se ve en la web.');
+  aviso('Guardado. En un par de minutos se ve en la web.');
   await cargarLista();
 });
 
@@ -288,15 +322,33 @@ $('#f-fotos').addEventListener('change', async (e) => {
 
 // Achica la foto del celular (3–10 MB) a JPG de ~200 KB, respetando la orientación.
 async function achicar(archivo, max, calidad) {
-  const bmp = await createImageBitmap(archivo, { imageOrientation: 'from-image' });
-  const k = Math.min(1, max / Math.max(bmp.width, bmp.height));
+  const img = await decodificar(archivo);
+  const k = Math.min(1, max / Math.max(img.width, img.height));
   const c = document.createElement('canvas');
-  c.width = Math.round(bmp.width * k);
-  c.height = Math.round(bmp.height * k);
-  c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+  c.width = Math.round(img.width * k);
+  c.height = Math.round(img.height * k);
+  c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
   const blob = await new Promise((r) => c.toBlob(r, 'image/jpeg', calidad));
   if (!blob) throw new Error('formato de imagen no soportado');
   return blob;
+}
+
+// createImageBitmap con orientación no anda en todos los Safari: si falla, se usa un <img>
+// (los navegadores ya lo giran según la foto).
+async function decodificar(archivo) {
+  try {
+    return await createImageBitmap(archivo, { imageOrientation: 'from-image' });
+  } catch {
+    const url = URL.createObjectURL(archivo);
+    try {
+      const img = new Image();
+      img.src = url;
+      await img.decode();
+      return img;
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  }
 }
 
 async function borrarArchivos(rutas) {
