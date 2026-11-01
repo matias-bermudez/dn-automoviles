@@ -6,6 +6,8 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 const C = window.DN_CONFIG;
 const DN = window.DN;
 const BUCKET = 'fotos';
+// Base compartida: esta web solo ve y edita los autos de su automotora.
+const CONCESIONARIA = C.concesionaria;
 const $ = (s) => document.querySelector(s);
 const esc = DN.esc;
 
@@ -67,11 +69,11 @@ $('#f-login').addEventListener('submit', async (e) => {
 });
 
 async function entrar() {
-  const { data: esAdmin } = await sb.rpc('es_admin');
+  const { data: esAdmin } = await sb.rpc('puede_editar', { c: CONCESIONARIA });
   if (!esAdmin) {
     await sb.auth.signOut();
     vista('login');
-    return error($('#login-error'), 'Este usuario no tiene permiso para editar. Hay que agregar su email en la tabla admins de Supabase.');
+    return error($('#login-error'), 'Este usuario no tiene permiso para editar esta automotora. Hay que agregarlo en la tabla admins de Supabase.');
   }
   await cargarLista();
 }
@@ -85,7 +87,7 @@ $('#salir').addEventListener('click', async () => {
 
 async function cargarLista() {
   const [{ data, error: err }] = await Promise.all([
-    sb.from('autos').select('*').order('created_at', { ascending: false }),
+    sb.from('autos').select('*').eq('concesionaria', CONCESIONARIA).order('created_at', { ascending: false }),
     leerPublicacion()
   ]);
   if (err) return aviso('No se pudo cargar la lista: ' + err.message);
@@ -236,7 +238,7 @@ form.addEventListener('submit', async (e) => {
     const slug = mismo ? actual.slug : n === 1 ? base : `${base}-${n}`;
     ({ error: err } = actual
       ? await sb.from('autos').update({ ...fila, slug }).eq('id', actual.id)
-      : await sb.from('autos').insert({ ...fila, slug }));
+      : await sb.from('autos').insert({ ...fila, slug, concesionaria: CONCESIONARIA }));
     if (!err || err.code !== '23505' || mismo) break;
   }
   $('#guardar').disabled = false;
@@ -304,7 +306,7 @@ $('#f-fotos').addEventListener('change', async (e) => {
     estado.hidden = false;
     estado.textContent = `Subiendo foto ${++hechas} de ${archivos.length}…`;
     try {
-      const ruta = `autos/${crypto.randomUUID()}.jpg`;
+      const ruta = `${CONCESIONARIA}/${crypto.randomUUID()}.jpg`;
       const [grande, chica] = await Promise.all([achicar(archivo, 1600, 0.82), achicar(archivo, 640, 0.78)]);
       for (const [r, blob] of [[ruta, grande], [ruta.replace(/\.jpg$/, '_m.jpg'), chica]]) {
         const { error: err } = await sb.storage.from(BUCKET).upload(r, blob, { contentType: 'image/jpeg', cacheControl: '31536000' });

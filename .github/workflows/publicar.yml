@@ -1,7 +1,7 @@
 # Arma el sitio con scripts/generar.js y lo publica en GitHub Pages:
 # - en cada push a main;
-# - cada 15 minutos, solo si el dueño cargó o cambió autos desde el panel (si no, no publica nada).
-#   Ese chequeo también mantiene activo el proyecto de Supabase (el plan gratis lo pausa a los 7 días sin uso).
+# - cuando se guarda un auto en el panel (Supabase dispara workflow_dispatch);
+# - cada 15 minutos, solo si cambiaron los autos (respaldo, y mantiene activo el proyecto de Supabase).
 name: Publicar
 
 on:
@@ -28,18 +28,29 @@ jobs:
     outputs:
       cambio: ${{ steps.generar.outputs.cambio }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
-          node-version: 20
+          node-version: 22
+      # Fotos ya bajadas en publicaciones anteriores (no cambian nunca): solo se bajan las nuevas.
+      - uses: actions/cache/restore@v6
+        with:
+          path: .cache/fotos
+          key: fotos-${{ github.run_id }}
+          restore-keys: fotos-
       - id: generar
         run: node scripts/generar.js
         env:
           SOLO_SI_CAMBIO: ${{ github.event_name == 'schedule' && '1' || '' }}
       - if: steps.generar.outputs.cambio == 'true'
-        uses: actions/configure-pages@v5
+        uses: actions/cache/save@v6
+        with:
+          path: .cache/fotos
+          key: fotos-${{ hashFiles('.cache/fotos/**') }}
       - if: steps.generar.outputs.cambio == 'true'
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/configure-pages@v6
+      - if: steps.generar.outputs.cambio == 'true'
+        uses: actions/upload-pages-artifact@v5
         with:
           path: _site
       # GitHub apaga los workflows programados de repos públicos a los 60 días sin commits; esto lo mantiene vivo.
@@ -58,4 +69,4 @@ jobs:
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - id: deploy
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5

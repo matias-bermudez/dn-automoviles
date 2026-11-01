@@ -81,7 +81,7 @@ async function leerSupabase() {
   // Las claves nuevas (sb_publishable_...) van solo en apikey; las viejas (anon, JWT) también en Authorization.
   const headers = { apikey: C.supabaseKey };
   if (!C.supabaseKey.startsWith('sb_')) headers.Authorization = 'Bearer ' + C.supabaseKey;
-  const res = await fetch(`${C.supabaseUrl}/rest/v1/autos?select=*&order=created_at.desc`, { headers });
+  const res = await fetch(`${C.supabaseUrl}/rest/v1/autos?select=*&concesionaria=eq.${encodeURIComponent(C.concesionaria)}&order=created_at.desc`, { headers });
   if (!res.ok) throw new Error(`Supabase respondió ${res.status}: ${await res.text()}`);
   return res.json();
 }
@@ -115,14 +115,23 @@ function deFila(r) {
   };
 }
 
+// Las fotos no cambian nunca (nombre = uuid): se guardan en .cache/fotos/ y solo se bajan las nuevas.
+// GitHub Actions conserva esa carpeta entre publicaciones (actions/cache), así no se gasta cupo de Supabase.
+const CACHE_FOTOS = path.join(RAIZ, '.cache', 'fotos');
+
 async function bajarFotos(autos) {
   const url = (p) => `${C.supabaseUrl}/storage/v1/object/public/fotos/${p.split('/').map(encodeURIComponent).join('/')}`;
   const bajar = async (p, destino) => {
-    const res = await fetch(url(p));
-    if (!res.ok) return false;
+    const cache = path.join(CACHE_FOTOS, p);
+    if (!fs.existsSync(cache)) {
+      const res = await fetch(url(p));
+      if (!res.ok) return false;
+      fs.mkdirSync(path.dirname(cache), { recursive: true });
+      fs.writeFileSync(cache, Buffer.from(await res.arrayBuffer()));
+    }
     const f = path.join(SALIDA, destino);
     fs.mkdirSync(path.dirname(f), { recursive: true });
-    fs.writeFileSync(f, Buffer.from(await res.arrayBuffer()));
+    fs.copyFileSync(cache, f);
     return true;
   };
   const tareas = autos.flatMap((a) => a._fotos.map((f) => async () => {

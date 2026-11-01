@@ -12,10 +12,12 @@ window.DN_CONFIG = {
   tiktok: 'dnventascompras2',
   dolar: 40,                    // pesos por dólar, aproximado: solo para ordenar por precio autos en distintas monedas
 
-  // Supabase (base de datos de autos y panel /admin/). Vacíos = se usan los autos de js/autos.js.
+  // Supabase: base compartida de la Plataforma Automotoras (~/Proyectos/plataforma-automotoras).
+  // Vacíos = se usan los autos de js/autos.js. `concesionaria` = id de esta automotora en la base.
   // La clave es la pública (anon / publishable): puede ir en el código, los permisos los pone supabase/schema.sql.
   supabaseUrl: 'https://dfunhdfvtmsmjdzpnhas.supabase.co',
   supabaseKey: 'sb_publishable_4Q-GxNAtPB894PRurMLwkQ_2NRVIjWg',
+  concesionaria: 'dn',
 
   // URL pública del sitio, con / al final. Si se compra dominio, cambiarla acá.
   sitio: 'https://matias-bermudez.github.io/dn-automoviles/',
