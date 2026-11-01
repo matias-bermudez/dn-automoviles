@@ -418,7 +418,8 @@ function generarAuto(a) {
     consulta: esc(consulta),
     a: {
       id: esc(a.id), nombre: esc(nombre), marca: esc(a.marca), modelo: esc(a.modelo),
-      anio: a.anio, precio: DN.precio(a)
+      anio: a.anio, precio: DN.precio(a),
+      notaPrecio: a.precio ? '<small>Precio contado</small>' : ''
     },
     galeria: {
       principal: DN.media(a, 0, { detalle: true, raiz, eager: true, alt: nombre + ', foto 1' }),
