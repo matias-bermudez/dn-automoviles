@@ -227,16 +227,17 @@ form.addEventListener('submit', async (e) => {
   if (falta.length) return error($('#ed-error'), 'Completá: ' + falta.join(', ') + '.');
 
   $('#guardar').disabled = true;
+  // El slug es la URL del auto (/autos/<slug>/): marca-modelo-año. Se mantiene mientras no cambien
+  // esos datos; si cambian, se actualiza. Si ya existe otro igual, se le agrega -2, -3...
+  const base = slugDe(fila);
+  const mismo = actual && (actual.slug === base || actual.slug.startsWith(base + '-'));
   let err;
-  if (actual) {
-    ({ error: err } = await sb.from('autos').update(fila).eq('id', actual.id));
-  } else {
-    // El slug es la URL del auto y no cambia nunca. Si ya existe uno igual, se le agrega -2, -3...
-    const base = slugDe(fila);
-    for (let n = 1; n < 20; n++) {
-      ({ error: err } = await sb.from('autos').insert({ ...fila, slug: n === 1 ? base : `${base}-${n}` }));
-      if (!err || err.code !== '23505') break;
-    }
+  for (let n = 1; n < 20; n++) {
+    const slug = mismo ? actual.slug : n === 1 ? base : `${base}-${n}`;
+    ({ error: err } = actual
+      ? await sb.from('autos').update({ ...fila, slug }).eq('id', actual.id)
+      : await sb.from('autos').insert({ ...fila, slug }));
+    if (!err || err.code !== '23505' || mismo) break;
   }
   $('#guardar').disabled = false;
   if (err) return error($('#ed-error'), 'No se pudo guardar: ' + err.message);

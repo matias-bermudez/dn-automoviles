@@ -168,8 +168,15 @@ function jsonld(...objs) {
     JSON.stringify(o).replace(/</g, '\\u003c') + '</script>').join('\n');
 }
 
+// ?v=<hash del archivo>: cuando cambia un css/js, el navegador no usa la copia vieja (Pages cachea 10 min).
+const versiones = {};
+function v(rel) {
+  versiones[rel] = versiones[rel] || crypto.createHash('sha1').update(fs.readFileSync(path.join(SALIDA, rel))).digest('hex').slice(0, 8);
+  return versiones[rel];
+}
+
 function scripts(raiz, nombres) {
-  return nombres.map((n) => `<script src="${raiz}js/${n}.js" defer></script>`).join('\n');
+  return nombres.map((n) => `<script src="${raiz}js/${n}.js?v=${v(`js/${n}.js`)}" defer></script>`).join('\n');
 }
 
 // ruta: '' (inicio), 'autos/', 'autos/<id>/', '404.html'...
@@ -180,6 +187,7 @@ function pagina(plantilla, ruta, datos) {
   const generico = esc(DN.waUrl());
   const d = Object.assign({
     raiz,
+    v: { css: v('css/styles.css'), admin: v('js/admin.js') },
     canonical: SITIO + ruta,
     robots: C.indexar ? '<meta name="robots" content="index, follow, max-image-preview:large">' : '<meta name="robots" content="noindex">',
     ogTipo: 'website',
