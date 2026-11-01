@@ -66,8 +66,8 @@ async function main() {
   for (const dir of ESTATICOS) fs.cpSync(path.join(RAIZ, dir), path.join(SALIDA, dir), { recursive: true });
   if (SUPABASE) {
     // Los datos del negocio de la base también los usa el navegador (formularios, mensajes de WhatsApp).
-    if (negocio) fs.appendFileSync(path.join(SALIDA, 'js/config.js'),
-      '\n// Datos del negocio desde Supabase (panel → Datos del negocio).\nObject.assign(window.DN_CONFIG, ' + JSON.stringify(configDeNegocio(negocio)) + ');\n');
+    // Se reescribe entero (no se agrega al final) para que el número viejo no quede en ningún archivo.
+    if (negocio) escribir('js/config.js', '// Generado por scripts/generar.js: js/config.js + datos del negocio de Supabase.\nwindow.DN_CONFIG = ' + JSON.stringify(C, null, 2) + ';\n');
     await bajarFotos(DN.autos);
     // El navegador (filtros del stock, galería, formulario) usa estos mismos datos.
     escribir('js/autos.js', '// Generado por scripts/generar.js desde Supabase.\nwindow.DN_AUTOS = ' +
