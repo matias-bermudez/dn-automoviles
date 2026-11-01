@@ -1,0 +1,30 @@
+<footer class="site-footer" id="contacto">
+  <div class="wrap footer__grid">
+    <div class="footer__brand">
+      <div class="logo logo--lg"><span class="logo__dn chrome">DN</span><span class="logo__sub">AUTOMÓVILES</span></div>
+      <span class="footer__slogan">COMPRAMOS · VENDEMOS · PERMUTAMOS</span>
+      <p class="footer__about">Automotora en Las Piedras, Canelones. Compra, venta y permuta de autos usados, camionetas y utilitarios, con entrega a domicilio.</p>
+    </div>
+    <div class="footer__col">
+      <strong>VISITANOS</strong>
+      {{negocio.direccion}}
+      <span>Las Piedras, Canelones, Uruguay</span>
+      {{negocio.horario}}
+    </div>
+    <div class="footer__col">
+      <strong>CONTACTO</strong>
+      <a href="{{wa.href}}" target="_blank" rel="noopener">WhatsApp {{wa.label}}</a>
+      {{negocio.tiktok}}
+    </div>
+    <div class="footer__col footer__col--nav">
+      <strong>NAVEGÁ</strong>
+      <a href="{{raiz}}autos/">Autos disponibles</a>
+      <a href="{{raiz}}vende-tu-auto/">Vendé tu auto</a>
+      <a href="{{raiz}}#domicilio">Entrega a domicilio</a>
+    </div>
+  </div>
+  <div class="wrap footer__bottom">
+    <span>© {{anio}} DN Automóviles · Las Piedras</span>
+    <span>Vendemos autos usados en el estado en que se encuentran, sin garantía. Te recomendamos revisarlos con tu mecánico.</span>
+  </div>
+</footer>

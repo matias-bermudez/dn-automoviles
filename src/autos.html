@@ -1,0 +1,56 @@
+{{> head}}
+<body data-raiz="{{raiz}}">
+
+{{> header}}
+
+<main>
+
+<section class="wrap page-head">
+  <span class="eyebrow">STOCK ACTUALIZADO · LAS PIEDRAS</span>
+  <h1 class="chrome">Autos disponibles</h1>
+  <p>Autos usados, camionetas y utilitarios en Las Piedras, Canelones. Todos se pueden llevar a domicilio y aceptamos tu usado en permuta.</p>
+</section>
+
+<section class="wrap filters-wrap">
+  <div class="filters">
+    <div class="tabs" role="group" aria-label="Tipo de vehículo" id="tabs">
+      <button type="button" class="pill" data-tipo="todos" aria-pressed="true">Todos</button>
+      <button type="button" class="pill" data-tipo="auto" aria-pressed="false">Autos</button>
+      <button type="button" class="pill" data-tipo="camioneta" aria-pressed="false">Camionetas</button>
+      <button type="button" class="pill" data-tipo="utilitario" aria-pressed="false">Utilitarios</button>
+    </div>
+    <div class="filters__tools">
+      <label class="search">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A1A1A6" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+        <span class="sr-only">Buscar</span>
+        <input type="search" id="q" placeholder="Marca o modelo" autocomplete="off">
+      </label>
+      <label class="sort">Ordenar
+        <select class="select" id="orden">
+          <option value="recientes">Más recientes</option>
+          <option value="precio-asc">Menor precio</option>
+          <option value="precio-desc">Mayor precio</option>
+          <option value="km">Menos kilómetros</option>
+        </select>
+      </label>
+    </div>
+  </div>
+  <p class="count" id="count" aria-live="polite">{{conteo}}</p>
+</section>
+
+<section class="wrap stock">
+  <div class="car-grid" id="grid">{{grilla}}</div>
+  <div class="empty" id="empty" hidden>
+    <strong>No encontramos ese auto en stock</strong>
+    <span>Escribinos y te avisamos cuando entre uno parecido.</span>
+    <a id="empty-wa" href="{{wa.href}}" target="_blank" rel="noopener">Avisame por WhatsApp</a>
+  </div>
+</section>
+
+</main>
+
+{{> footer}}
+{{> fab}}
+
+</body>
+</html>

@@ -1,6 +1,7 @@
-// Stock. Para agregar un auto, copiar un bloque y cambiar los datos.
+// Stock. Para agregar un auto, copiar un bloque y cambiar los datos. Al publicar
+// (push a main) se arma sola la página del auto en /autos/<id>/.
 //
-// id          único, va en la URL (auto.html?id=...). Minúsculas y guiones.
+// id          único, va en la URL (/autos/<id>/). Minúsculas y guiones.
 // tipo        'auto' | 'camioneta' | 'utilitario' (filtros del stock)
 // silueta     opcional, dibujo si no hay fotos: 'auto' | 'pickup' | 'van'
 // precio      número en dólares, sin puntos. null = "Consultar"

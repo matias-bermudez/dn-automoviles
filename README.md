@@ -4,9 +4,15 @@ Sitio de DN Automóviles (Las Piedras, Canelones): stock de autos usados, ficha 
 
 **Web:** https://matias-bermudez.github.io/dn-automoviles/
 
-HTML, CSS y JS sin build. Se publica con GitHub Pages desde `main`.
+Sitio estático armado por `scripts/generar.js` (Node, sin dependencias). Cada push a `main` lo regenera y publica con GitHub Actions.
 
 - Cambiar número de WhatsApp, dirección u horario: `js/config.js`
 - Cargar o sacar autos del stock: `js/autos.js` (fotos en `img/autos/<id>/`)
+- Dejar que Google indexe la web: `indexar: true` en `js/config.js`
 
-Probar en local: `python3 -m http.server 8000` → http://localhost:8000
+Probar en local:
+
+```sh
+node scripts/generar.js --local
+python3 -m http.server 8791 -d _site   # → http://localhost:8791
+```

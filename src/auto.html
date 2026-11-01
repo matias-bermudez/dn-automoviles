@@ -1,0 +1,79 @@
+{{> head}}
+<body data-raiz="{{raiz}}">
+
+{{> header}}
+
+<main>
+
+<nav class="wrap crumbs" aria-label="Ubicación">
+  <a href="{{raiz}}autos/">Autos disponibles</a><span aria-hidden="true">/</span><span>{{a.nombre}}</span>
+</nav>
+
+<section class="wrap detail">
+  <div class="gallery">
+    <div class="gallery__main" id="foto" data-auto="{{a.id}}">
+      {{galeria.principal}}
+      <span class="gallery__label" id="foto-label">{{galeria.label}}</span>
+      {{galeria.flare}}
+      {{galeria.tag}}
+      <span class="gallery__counter" id="foto-counter">1 / {{galeria.total}}</span>
+    </div>
+    <div class="thumbs" role="group" aria-label="Fotos del vehículo" id="thumbs"{{galeria.thumbsOcultas}}>{{galeria.thumbs}}</div>
+  </div>
+
+  <aside class="summary">
+    <h1><span class="summary__eyebrow">{{a.marca}} · {{a.anio}}</span> {{a.modelo}}</h1>
+    <div class="summary__price">
+      <span class="big-price chrome">{{a.precio}}</span>
+      <small>Precio contado</small>
+    </div>
+    <div class="keyspecs">{{claves}}</div>
+    <a class="btn btn--wa btn--block" href="{{consulta}}" target="_blank" rel="noopener">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-12.4 7.4L3 21l2.1-5.4A8.4 8.4 0 1 1 21 11.5z"/></svg>
+      Consultar por WhatsApp</a>
+    <a class="btn btn--ghost btn--block" href="{{raiz}}vende-tu-auto/?objetivo=permutar&amp;auto={{a.id}}">Entregar mi auto en permuta</a>
+    <div class="note">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#F2A93B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>
+      <div class="note__txt">
+        <strong>Te lo llevamos a domicilio</strong>
+        <span>Lo ves y lo probás en tu casa. Coordinamos día y hora por WhatsApp.</span>
+      </div>
+    </div>
+  </aside>
+</section>
+
+<section class="wrap detail-info">
+  <div class="detail-info__main">
+    <h2 class="h3">Ficha técnica</h2>
+    <dl class="ficha">{{ficha}}</dl>
+    {{textoDescripcion}}
+  </div>
+  <div class="detail-info__side">
+    <div class="box">
+      <strong>Situación del vehículo</strong>
+      <div class="chips">{{chips}}</div>
+    </div>
+    <div class="box">
+      <strong>Antes de comprar</strong>
+      <p>Vendemos autos usados en el estado en que se encuentran, sin garantía. Podés revisarlo con tu mecánico de confianza antes de cerrar.</p>
+    </div>
+  </div>
+</section>
+
+<section class="related">
+  <div class="wrap related__in">
+    <div class="related__head">
+      <h2 class="chrome">También te puede interesar</h2>
+      <a class="link-arrow" href="{{raiz}}autos/">Ver todo el stock</a>
+    </div>
+    <div class="related__grid">{{relacionados}}</div>
+  </div>
+</section>
+
+</main>
+
+{{> footer}}
+{{> fab}}
+
+</body>
+</html>

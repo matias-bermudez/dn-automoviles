@@ -1,19 +1,26 @@
-// Helpers compartidos por todas las páginas. Se expone todo en window.DN.
+// Helpers compartidos. Se usan en el navegador y también en scripts/generar.js,
+// que arma las páginas en el servidor con estas mismas funciones.
+// Todo se expone en window.DN.
 (function () {
   var C = window.DN_CONFIG;
   var AUTOS = window.DN_AUTOS || [];
+  var EN_NAVEGADOR = typeof document !== 'undefined';
+  // Prefijo relativo hasta la raíz del sitio ('./', '../', '../../'), lo pone el generador en <body data-raiz>.
+  var RAIZ = EN_NAVEGADOR && document.body ? document.body.getAttribute('data-raiz') || './' : './';
   var MSG_GENERICO = 'Hola DN Automóviles, te escribo desde la web.';
+  var VISTAS = ['Frente', 'Lateral', 'Trasera', 'Interior', 'Motor'];
 
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
     });
   }
+  function raiz(r) { return r == null ? RAIZ : r; }
   function miles(n) { return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '.'); }
   function precio(a) { return a.precio ? 'U$S ' + miles(a.precio) : 'Consultar'; }
   function nombre(a) { return a.marca + ' ' + a.modelo; }
   function meta(a) { return [a.anio, miles(a.km) + ' km', a.combustible, a.transmision].join(' · '); }
-  function autoUrl(a) { return 'auto.html?id=' + encodeURIComponent(a.id); }
+  function autoUrl(a, r) { return raiz(r) + 'autos/' + encodeURIComponent(a.id) + '/'; }
   function waUrl(text) { return 'https://wa.me/' + C.whatsapp + '?text=' + encodeURIComponent(text || MSG_GENERICO); }
   function buscar(id) { return AUTOS.filter(function (a) { return a.id === id; })[0]; }
 
@@ -29,24 +36,27 @@
     if (!detalle) svg = svg.replace(/<path [^>]*class="silueta__det"\/>/, '');
     return '<svg class="silueta" viewBox="0 0 200 80" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + svg + '</svg>';
   }
-  // Foto i del auto (o la silueta si no tiene).
-  function media(a, i, detalle) {
+  // Foto i del auto (o la silueta si no tiene). o: { detalle, raiz, alt, eager }
+  function media(a, i, o) {
+    o = o || {};
     var src = a.fotos && a.fotos[i || 0];
-    if (!src) return silueta(a, detalle);
-    return '<img class="media-fill" src="' + esc(src) + '" alt="' + esc(nombre(a)) + '" loading="lazy">';
+    if (!src) return silueta(a, o.detalle);
+    return '<img class="media-fill" src="' + esc(raiz(o.raiz) + src) + '" alt="' + esc(o.alt || nombre(a)) + '"' +
+      (o.eager ? ' fetchpriority="high"' : ' loading="lazy"') + '>';
   }
 
   function spec(l, v) {
     return '<div class="spec"><span class="spec__l">' + l + '</span><span class="spec__v">' + esc(v) + '</span></div>';
   }
-  // Tarjeta del stock. compacta = la versión del inicio (una línea de datos).
-  function card(a, compacta) {
+  // Tarjeta del stock. o: { compacta (versión del inicio, una línea de datos), raiz }
+  function card(a, o) {
+    o = o || {};
     var tag = a.etiqueta ? '<span class="tag">' + esc(a.etiqueta) + '</span>' : '';
-    var info = compacta
+    var info = o.compacta
       ? '<div class="car-card__title"><strong class="car-card__name">' + esc(nombre(a)) + '</strong><span class="car-card__meta">' + esc(meta(a)) + '</span></div>'
       : '<strong class="car-card__name">' + esc(nombre(a)) + '</strong><div class="specs3">' + spec('AÑO', a.anio) + spec('KM', miles(a.km)) + spec('MOTOR', a.combustible) + '</div>';
-    return '<a class="car-card" href="' + autoUrl(a) + '">' +
-      '<div class="car-card__media">' + media(a, 0) + tag + '</div>' +
+    return '<a class="car-card" href="' + autoUrl(a, o.raiz) + '">' +
+      '<div class="car-card__media">' + media(a, 0, { raiz: o.raiz }) + tag + '</div>' +
       '<div class="car-card__body">' + info +
       '<div class="price-row"><span class="price">' + precio(a) + '</span><span class="price-row__cta">Ver detalle</span></div>' +
       '</div></a>';
@@ -57,42 +67,24 @@
     return AUTOS.slice().sort(function (a, b) { return (b.ingreso || '').localeCompare(a.ingreso || ''); });
   }
 
-  // ---- Cableado común ----
-
-  document.querySelectorAll('[data-wa]').forEach(function (a) {
-    a.href = waUrl(a.getAttribute('data-wa'));
-    a.target = '_blank';
-    a.rel = 'noopener';
-  });
-  document.querySelectorAll('[data-wa-label]').forEach(function (el) { el.textContent = C.whatsappLabel; });
-
-  // data-config="campo": pone el valor de DN_CONFIG (con data-prefix opcional) o esconde el elemento si está vacío.
-  document.querySelectorAll('[data-config]').forEach(function (el) {
-    var v = C[el.getAttribute('data-config')];
-    if (!v) { el.hidden = true; return; }
-    el.textContent = (el.getAttribute('data-prefix') || '') + v;
-    var href = el.getAttribute('data-href');
-    if (href) el.href = href.replace('{}', v);
-  });
-
-  document.querySelectorAll('[data-year]').forEach(function (el) { el.textContent = new Date().getFullYear(); });
-
-  var toggle = document.querySelector('.nav__toggle');
-  if (toggle) {
-    toggle.addEventListener('click', function () {
-      var open = document.body.classList.toggle('menu-open');
-      toggle.setAttribute('aria-expanded', String(open));
-    });
-    document.querySelectorAll('.nav__links a').forEach(function (a) {
-      a.addEventListener('click', function () {
-        document.body.classList.remove('menu-open');
-        toggle.setAttribute('aria-expanded', 'false');
+  if (EN_NAVEGADOR) {
+    var toggle = document.querySelector('.nav__toggle');
+    if (toggle) {
+      toggle.addEventListener('click', function () {
+        var open = document.body.classList.toggle('menu-open');
+        toggle.setAttribute('aria-expanded', String(open));
       });
-    });
+      document.querySelectorAll('.nav__links a').forEach(function (a) {
+        a.addEventListener('click', function () {
+          document.body.classList.remove('menu-open');
+          toggle.setAttribute('aria-expanded', 'false');
+        });
+      });
+    }
   }
 
   window.DN = {
-    config: C, autos: AUTOS,
+    config: C, autos: AUTOS, VISTAS: VISTAS,
     esc: esc, miles: miles, precio: precio, nombre: nombre, meta: meta,
     autoUrl: autoUrl, waUrl: waUrl, buscar: buscar, recientes: recientes,
     silueta: silueta, media: media, card: card

@@ -2,38 +2,42 @@
 
 Web para **DN Automóviles** (compra-venta de autos usados, Las Piedras, Canelones). Es una **propuesta**: el cliente todavía no la vio ni la pagó. La idea es tenerla publicada y mandársela para ver si le interesa.
 
-- Repo: https://github.com/matias-bermudez/dn-automoviles (público, lo pide GitHub Pages en plan free)
+- Repo: https://github.com/matias-bermudez/dn-automoviles (tiene que ser **público**: GitHub Pages en plan free no publica repos privados)
 - Web: https://matias-bermudez.github.io/dn-automoviles/
 - Seguimiento: issues del repo. Los commits cierran issues con `Closes #N`.
 
 ## Stack
 
-HTML + CSS + JS sin build ni dependencias. Se publica tal cual con GitHub Pages (rama `main`, raíz).
-Para probar en local: `python3 -m http.server 8000` y abrir http://localhost:8000 (también funciona abriendo el .html con doble clic).
+Sitio estático generado por `scripts/generar.js` (Node 18+, sin dependencias) → `_site/` (no se commitea).
+GitHub Actions (`.github/workflows/publicar.yml`) lo corre y publica en Pages en cada push a `main`.
+
+Probar en local: `node scripts/generar.js --local && python3 -m http.server 8791 -d _site` → http://localhost:8791
+(el 8765 lo usa otro proyecto de Matías).
 
 | Archivo | Qué es |
 |---|---|
-| `index.html` | Inicio |
-| `autos.html` | Stock con filtros (tipo, búsqueda, orden). Los filtros quedan en la URL (`?tipo=camioneta`) |
-| `auto.html?id=<id>` | Detalle de un auto |
-| `vende.html` | Formulario "Vendé tu auto" → arma el mensaje y abre WhatsApp. Acepta `?objetivo=permutar&auto=<id>` |
-| `js/config.js` | **Número de WhatsApp**, dirección, horario, zonas, TikTok. Si un campo está vacío no se muestra |
-| `js/autos.js` | **Stock**. Un objeto por auto. Las fotos van en `img/autos/<id>/` |
-| `js/common.js` | Helpers compartidos (links de WhatsApp, tarjetas, siluetas, menú mobile) |
-| `css/styles.css` | Todos los estilos. Tokens de color en `:root` |
+| `js/config.js` | **Número de WhatsApp**, dirección, horario, zonas, TikTok, URL del sitio e interruptor `indexar` |
+| `js/autos.js` | **Stock**. Un objeto por auto. Fotos en `img/autos/<id>/`. El generador valida ids, campos y que las fotos existan |
+| `src/*.html` | Plantillas: `{{ dato }}` y `{{> parcial }}` (parciales en `src/_partials/`) |
+| `scripts/generar.js` | Arma cada página, una por auto en `/autos/<id>/`, JSON-LD, sitemap.xml y robots.txt |
+| `js/common.js` | Helpers compartidos entre navegador y generador (tarjetas, siluetas, links de WhatsApp) |
+| `js/stock.js`, `detalle.js`, `vende.js` | Lo interactivo: filtros del stock, galería, formulario |
+| `css/styles.css`, `fonts/` | Estilos (tokens en `:root`) y fuentes alojadas (Archivo + Cinzel, OFL) |
 | `diseno/` | Diseño original (Claude Design) y sus páginas desempaquetadas, de referencia |
 
-## Formularios / WhatsApp
+URLs: `/`, `/autos/`, `/autos/<id>/`, `/vende-tu-auto/` (acepta `?objetivo=permutar&auto=<id>`), `404.html`.
 
-No hay backend: todos los botones arman un link `https://wa.me/<numero>?text=...` y abren WhatsApp con el mensaje listo.
+## WhatsApp
+
+No hay backend: todos los botones son links `https://wa.me/<numero>?text=...` con el mensaje armado.
 **Ahora apunta al número de prueba de Matías (091 969 322).** El de DN es 098 603 518 (59898603518).
 
-## Pendiente antes de mandar al cliente
+## SEO
 
-- [ ] Cambiar `whatsapp` y `whatsappLabel` en `js/config.js` al número de DN
-- [ ] Dirección, horario y zonas reales en `js/config.js`
-- [ ] Stock real con fotos (hoy son 6 autos de ejemplo del diseño)
-- [ ] Al lanzar de verdad: sacar `<meta name="robots" content="noindex">` de los 4 HTML
+- Título, descripción, canonical y og:image propios por página; h1 único con marca + modelo + año en cada auto.
+- JSON-LD: `AutoDealer` + `WebSite` en el inicio, `Car` + `Offer` + `BreadcrumbList` en cada auto.
+- `indexar: false` en config.js → todas las páginas llevan `noindex`. Se prende recién cuando DN acepte.
+- Lo que más pesa para búsquedas locales está fuera del código: Google Business Profile, Search Console y dominio propio (issue #9).
 
 ## Verificación visual
 
@@ -43,4 +47,7 @@ Chrome headless solo (`--screenshot`) no sirve para mobile: en Mac no baja de ~5
 
 ## Registro
 
-- 2026-10-31: proyecto creado a partir del diseño. 4 páginas completas, responsive, publicado en GitHub Pages (issues #1–#7 cerrados). Quedan #8 (probar mensajes) y #9 (datos reales).
+- 2026-10-31: proyecto creado a partir del diseño. 4 páginas, responsive, publicado (issues #1–#7).
+- 2026-10-31: Matías puso el repo privado → Pages se apagó (404). Se volvió a público.
+- 2026-10-31: SEO (#10): generador estático, una página por auto, JSON-LD, sitemap, fuentes propias, deploy por Actions.
+- Pendiente: #8 (probar mensajes) y #9 (datos reales + lanzamiento SEO).
