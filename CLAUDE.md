@@ -43,7 +43,7 @@ URLs: `/`, `/autos/`, `/autos/<id>/`, `/vende-tu-auto/` (acepta `?objetivo=permu
 ## WhatsApp
 
 No hay backend: todos los botones son links `https://wa.me/<numero>?text=...` con el mensaje armado.
-Apunta al número de DN: 098 603 518 (59898603518). Para volver a probar con el de Matías: 59891969322 / 091 969 322.
+Apunta al número de DN: 095 407 252 (59895407252; antes 098 603 518). Para volver a probar con el de Matías: 59891969322 / 091 969 322.
 
 ## SEO
 
