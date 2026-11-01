@@ -14,8 +14,8 @@ window.DN_CONFIG = {
 
   // Supabase (base de datos de autos y panel /admin/). Vacíos = se usan los autos de js/autos.js.
   // La clave es la pública (anon / publishable): puede ir en el código, los permisos los pone supabase/schema.sql.
-  supabaseUrl: '',
-  supabaseKey: '',
+  supabaseUrl: 'https://dfunhdfvtmsmjdzpnhas.supabase.co',
+  supabaseKey: 'sb_publishable_4Q-GxNAtPB894PRurMLwkQ_2NRVIjWg',
 
   // URL pública del sitio, con / al final. Si se compra dominio, cambiarla acá.
   sitio: 'https://matias-bermudez.github.io/dn-automoviles/',
