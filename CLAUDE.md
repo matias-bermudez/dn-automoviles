@@ -66,4 +66,6 @@ Chrome headless solo (`--screenshot`) no sirve para mobile: en Mac no baja de ~5
 - 2026-10-31: #8 cerrado (Matías probó los mensajes en laptop y 2 celulares).
 - 2026-10-31: #11 base de datos + panel con Supabase (misma arquitectura que KM39). Falta conectar el proyecto.
 - 2026-10-31: Supabase conectado. Bug: km/precio con punto ("200.000") se guardaban como decimal → ahora campos de texto que toman solo dígitos.
-- Pendiente: #11 (token para publicar al guardar + prueba con fotos) y #9 (datos reales + lanzamiento SEO).
+- 2026-11-01: publicación al guardar andando (#11 cerrado). Precios en U$S o $ (columna moneda).
+- 2026-11-01: stock real cargado desde capturas de videos de DN: Peugeot 3008, Peugeot 308, Chana Star Truck, Chery QQ. Ejemplos y autos de prueba borrados. **Versión, año, km, dueños y precios (salvo los $140.000 de la Chana) son inventados**: corregir con DN.
+- Pendiente: #9 (número de DN, datos reales, lanzamiento SEO).
