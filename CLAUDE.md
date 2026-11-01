@@ -68,4 +68,6 @@ Chrome headless solo (`--screenshot`) no sirve para mobile: en Mac no baja de ~5
 - 2026-10-31: Supabase conectado. Bug: km/precio con punto ("200.000") se guardaban como decimal → ahora campos de texto que toman solo dígitos.
 - 2026-11-01: publicación al guardar andando (#11 cerrado). Precios en U$S o $ (columna moneda).
 - 2026-11-01: stock real cargado desde capturas de videos de DN: Peugeot 3008, Peugeot 308, Chana Star Truck, Chery QQ. Ejemplos y autos de prueba borrados. **Versión, año, km, dueños y precios (salvo los $140.000 de la Chana) son inventados**: corregir con DN.
-- Pendiente: #9 (número de DN, datos reales, lanzamiento SEO).
+- 2026-11-01: WhatsApp pasado al número de DN. Envíos a todo el país en los textos.
+- 2026-11-01: **Plataforma Automotoras**: la base de Supabase pasó a ser compartida por todas las automotoras de Matías (`~/Proyectos/plataforma-automotoras`, repo privado). DN es la implementación de referencia (`concesionaria: 'dn'`). KM39, Khalek y Mar Motors se adaptan a la misma base; Carlitos y JH Motors se rehacen como estáticos desde sus propios chats.
+- Pendiente: #9 (datos reales, Cloudflare Pages, dominio, lanzamiento SEO).
