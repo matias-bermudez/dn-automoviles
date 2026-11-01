@@ -518,6 +518,16 @@ select.input { padding: 0 14px; }
 }
 .drop:hover, .drop:focus-within { border-color: var(--accent); color: var(--text); }
 .drop input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.drop svg { margin-right: 8px; flex: none; }
+.foto-botones { display: grid; gap: 10px; }
+/* El botón de cámara solo en pantallas táctiles (celular, tablet): en la compu no hay cámara que abrir. */
+.drop--camara, .drop__solo-tactil { display: none; }
+@media (pointer: coarse) {
+  .foto-botones { grid-template-columns: 1fr 1fr; }
+  .drop--camara { display: flex; border-style: solid; border-color: var(--accent); color: var(--text); }
+  .drop__solo-tactil { display: inline; }
+  .drop__solo-compu { display: none; }
+}
 .admin-acciones { display: flex; flex-wrap: wrap; gap: 12px; }
 .admin-acciones .btn--danger { margin-left: auto; }
 .link-back { align-self: flex-start; min-height: 32px; padding: 0; border: 0; background: none; color: var(--muted); font-size: 15px; cursor: pointer; }

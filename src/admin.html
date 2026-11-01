@@ -121,7 +121,13 @@
         <legend>4 · FOTOS</legend>
         <span class="fs-panel__hint">La primera es la portada. Se achican solas antes de subir, podés mandarlas directo del celular.</span>
         <div class="foto-grid" id="fotos"></div>
-        <label class="drop">+ Agregar fotos<input type="file" accept="image/*" multiple id="f-fotos"></label>
+        <div class="foto-botones">
+          <label class="drop drop--camara">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8a2 2 0 0 1 2-2h2l2-2h6l2 2h2a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><circle cx="12" cy="13" r="4"/></svg>
+            Sacar foto<input type="file" accept="image/*" capture="environment" id="f-camara"></label>
+          <label class="drop">
+            <span class="drop__solo-tactil"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5L5 21"/></svg>Galería</span><span class="drop__solo-compu">+ Agregar fotos</span><input type="file" accept="image/*" multiple id="f-fotos"></label>
+        </div>
         <p class="admin-nota" id="subiendo" hidden></p>
       </fieldset>
 
