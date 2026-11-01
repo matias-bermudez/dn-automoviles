@@ -35,6 +35,12 @@ No hay backend: todos los botones arman un link `https://wa.me/<numero>?text=...
 - [ ] Stock real con fotos (hoy son 6 autos de ejemplo del diseño)
 - [ ] Al lanzar de verdad: sacar `<meta name="robots" content="noindex">` de los 4 HTML
 
+## Verificación visual
+
+Capturas con Playwright (no está instalado acá, se usa el de otro proyecto):
+`require('/Users/matibermudez/Proyectos/TapStore-listas/node_modules/playwright')` con `devices['iPhone 13']` para mobile.
+Chrome headless solo (`--screenshot`) no sirve para mobile: en Mac no baja de ~500px de ancho.
+
 ## Registro
 
-- 2026-10-31: proyecto creado a partir del diseño. Sitio estático completo, publicado en GitHub Pages.
+- 2026-10-31: proyecto creado a partir del diseño. 4 páginas completas, responsive, publicado en GitHub Pages (issues #1–#7 cerrados). Quedan #8 (probar mensajes) y #9 (datos reales).
