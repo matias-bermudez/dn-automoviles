@@ -38,7 +38,10 @@ let DN, AUTOS, esc;
 async function main() {
   // ---- Datos ----
   let filas = null;
+  let negocio = null;
   if (SUPABASE) {
+    negocio = await leerNegocio();
+    Object.assign(C, configDeNegocio(negocio));
     filas = await leerSupabase();
     ctx.window.DN_AUTOS = filas.map(deFila).filter(Boolean);
   } else {
@@ -49,11 +52,11 @@ async function main() {
   esc = DN.esc;
   if (!SUPABASE) validar(DN.autos);
 
-  const hash = crypto.createHash('sha256').update(JSON.stringify(filas || DN.autos)).digest('hex').slice(0, 16);
+  const hash = crypto.createHash('sha256').update(JSON.stringify({ autos: filas || DN.autos, negocio })).digest('hex').slice(0, 16);
   if (process.env.SOLO_SI_CAMBIO) {
     const anterior = await fetch(SITIO + 'estado.json', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
     if (anterior && anterior.hash === hash) {
-      console.log('Los autos no cambiaron desde la última publicación, no hay nada para publicar.');
+      console.log('Los autos y los datos del negocio no cambiaron desde la última publicación, no hay nada para publicar.');
       salida('cambio', 'false');
       return;
     }
@@ -62,6 +65,9 @@ async function main() {
   fs.rmSync(SALIDA, { recursive: true, force: true });
   for (const dir of ESTATICOS) fs.cpSync(path.join(RAIZ, dir), path.join(SALIDA, dir), { recursive: true });
   if (SUPABASE) {
+    // Los datos del negocio de la base también los usa el navegador (formularios, mensajes de WhatsApp).
+    if (negocio) fs.appendFileSync(path.join(SALIDA, 'js/config.js'),
+      '\n// Datos del negocio desde Supabase (panel → Datos del negocio).\nObject.assign(window.DN_CONFIG, ' + JSON.stringify(configDeNegocio(negocio)) + ');\n');
     await bajarFotos(DN.autos);
     // El navegador (filtros del stock, galería, formulario) usa estos mismos datos.
     escribir('js/autos.js', '// Generado por scripts/generar.js desde Supabase.\nwindow.DN_AUTOS = ' +
@@ -84,6 +90,26 @@ async function leerSupabase() {
   const res = await fetch(`${C.supabaseUrl}/rest/v1/autos?select=*&concesionaria=eq.${encodeURIComponent(C.concesionaria)}&order=created_at.desc`, { headers });
   if (!res.ok) throw new Error(`Supabase respondió ${res.status}: ${await res.text()}`);
   return res.json();
+}
+
+// Datos del negocio que el dueño edita desde el panel (WhatsApp, dirección, horario...).
+// Si la tabla todavía no existe o no hay fila, se usa js/config.js tal cual.
+async function leerNegocio() {
+  const headers = { apikey: C.supabaseKey };
+  if (!C.supabaseKey.startsWith('sb_')) headers.Authorization = 'Bearer ' + C.supabaseKey;
+  const res = await fetch(`${C.supabaseUrl}/rest/v1/negocios?select=*&concesionaria=eq.${encodeURIComponent(C.concesionaria)}`, { headers });
+  if (!res.ok) {
+    console.warn(`Aviso: no se pudieron leer los datos del negocio (${res.status}), se usa config.js.`);
+    return null;
+  }
+  return (await res.json())[0] || null;
+}
+
+// Fila de negocios → claves de DN_CONFIG (solo las que tienen valor).
+function configDeNegocio(n) {
+  if (!n) return {};
+  const mapa = { whatsapp: 'whatsapp', telefono: 'whatsappLabel', direccion: 'direccion', horario: 'horario', zonas: 'zonas', tiktok: 'tiktok' };
+  return Object.fromEntries(Object.entries(mapa).filter(([k]) => n[k]).map(([k, c]) => [c, n[k]]));
 }
 
 // Fila de la base → mismo formato que js/autos.js. Si a un auto le falta algo, se saltea (no rompe la web).
@@ -228,27 +254,29 @@ function escribir(rel, contenido) {
 // ---- Datos estructurados (schema.org) ----
 
 const NEGOCIO_ID = SITIO + '#negocio';
-const negocioLd = {
-  '@context': 'https://schema.org',
-  '@type': 'AutoDealer',
-  '@id': NEGOCIO_ID,
-  name: 'DN Automóviles',
-  description: 'Automotora en Las Piedras, Canelones. Compra, venta y permuta de autos usados, al día o con deuda, con envíos a todo el país.',
-  url: SITIO,
-  logo: SITIO + 'img/logo.png',
-  image: SITIO + 'img/og.jpg',
-  telephone: '+' + C.whatsapp,
-  address: {
-    '@type': 'PostalAddress',
-    streetAddress: C.direccion || undefined,
-    addressLocality: 'Las Piedras',
-    addressRegion: 'Canelones',
-    addressCountry: 'UY'
-  },
-  areaServed: { '@type': 'Country', name: 'Uruguay' },
-  openingHours: C.horarioSchema ? C.horarioSchema.split(',').map((h) => h.trim()) : undefined,
-  sameAs: C.tiktok ? ['https://www.tiktok.com/@' + C.tiktok] : undefined
-};
+function negocioLd() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'AutoDealer',
+    '@id': NEGOCIO_ID,
+    name: 'DN Automóviles',
+    description: 'Automotora en Las Piedras, Canelones. Compra, venta y permuta de autos usados, al día o con deuda, con envíos a todo el país.',
+    url: SITIO,
+    logo: SITIO + 'img/logo.png',
+    image: SITIO + 'img/og.jpg',
+    telephone: '+' + C.whatsapp,
+    address: {
+      '@type': 'PostalAddress',
+      streetAddress: C.direccion || undefined,
+      addressLocality: 'Las Piedras',
+      addressRegion: 'Canelones',
+      addressCountry: 'UY'
+    },
+    areaServed: { '@type': 'Country', name: 'Uruguay' },
+    openingHours: C.horarioSchema ? C.horarioSchema.split(',').map((h) => h.trim()) : undefined,
+    sameAs: C.tiktok ? ['https://www.tiktok.com/@' + C.tiktok] : undefined
+  };
+}
 
 function migas(items) {
   return {
@@ -299,7 +327,7 @@ function generarPaginas() {
   pagina('index.html', '', {
     titulo: 'Autos usados en Las Piedras, Canelones | DN Automóviles',
     descripcion: 'Automotora en Las Piedras, Canelones: autos usados, camionetas y utilitarios. Compramos tu auto al día o con deuda, permutas y envíos a todo el país.',
-    jsonld: jsonld(negocioLd, { '@context': 'https://schema.org', '@type': 'WebSite', name: 'DN Automóviles', url: SITIO, inLanguage: 'es-UY' }),
+    jsonld: jsonld(negocioLd(), { '@context': 'https://schema.org', '@type': 'WebSite', name: 'DN Automóviles', url: SITIO, inLanguage: 'es-UY' }),
     js: ['common'],
     destacado: destacado ? {
       href: DN.autoUrl(destacado, './'),

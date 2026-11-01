@@ -49,7 +49,7 @@ document.addEventListener('click', (e) => {
 });
 
 function vista(nombre) {
-  for (const v of ['login', 'lista', 'editor']) $('#v-' + v).hidden = v !== nombre;
+  for (const v of ['login', 'lista', 'editor', 'negocio']) $('#v-' + v).hidden = v !== nombre;
   $('#admin-nav').hidden = nombre === 'login';
   window.scrollTo(0, 0);
 }
@@ -175,6 +175,49 @@ $('#lista').addEventListener('click', (e) => {
 });
 
 $('#nuevo').addEventListener('click', () => abrir(null));
+
+// ---- Datos del negocio ----
+// Se guardan en la tabla `negocios`; al publicar pisan a config.js en toda la web.
+
+const CAMPOS_NEGOCIO = ['direccion', 'horario', 'zonas', 'tiktok'];
+const fNegocio = $('#f-negocio');
+
+$('#abrir-negocio').addEventListener('click', async () => {
+  error($('#neg-error'));
+  const { data } = await sb.from('negocios').select('*').eq('concesionaria', CONCESIONARIA).maybeSingle();
+  // Sin fila todavía: se muestra lo que hoy publica la web (config.js).
+  fNegocio.whatsapp.value = (data && data.telefono) || C.whatsappLabel || '';
+  for (const k of CAMPOS_NEGOCIO) fNegocio[k].value = (data ? data[k] : C[k]) || '';
+  vista('negocio');
+});
+
+document.querySelectorAll('[data-volver]').forEach((b) => b.addEventListener('click', () => vista('lista')));
+
+// "095 407 252", "+598 95 407 252" o "2303 6119" → { whatsapp: '59895407252', telefono: '095 407 252' }.
+function telefonoUY(texto) {
+  let d = texto.replace(/\D/g, '');
+  if (d.startsWith('598')) d = d.slice(3);
+  if (d.startsWith('0')) d = d.slice(1);
+  if (!/^[0-9]{8}$/.test(d)) return null;
+  const telefono = d.startsWith('9') ? `0${d.slice(0, 2)} ${d.slice(2, 5)} ${d.slice(5)}` : `${d.slice(0, 4)} ${d.slice(4)}`;
+  return { whatsapp: '598' + d, telefono };
+}
+
+fNegocio.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  error($('#neg-error'));
+  const tel = telefonoUY(fNegocio.whatsapp.value);
+  if (!tel) return error($('#neg-error'), 'El WhatsApp tiene que ser un número de Uruguay, por ejemplo 095 407 252.');
+  const fila = { concesionaria: CONCESIONARIA, ...tel };
+  for (const k of CAMPOS_NEGOCIO) fila[k] = fNegocio[k].value.trim().replace(/^@/, '') || null;
+  $('#guardar-negocio').disabled = true;
+  const { error: err } = await sb.from('negocios').upsert(fila, { onConflict: 'concesionaria' });
+  $('#guardar-negocio').disabled = false;
+  if (err) return error($('#neg-error'), 'No se pudo guardar: ' + err.message);
+  Object.assign(C, { whatsapp: tel.whatsapp, whatsappLabel: tel.telefono });
+  aviso('Guardado. En un par de minutos se actualiza en toda la web.');
+  vista('lista');
+});
 
 // ---- Editor ----
 

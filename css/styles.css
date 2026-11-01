@@ -473,6 +473,7 @@ select.input { padding: 0 14px; }
 .admin-login h1, .admin-head h1 { margin: 0; font-size: clamp(30px, 4vw, 44px); font-weight: 800; font-stretch: 110%; letter-spacing: -1px; line-height: 1.05; }
 .admin-head { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; justify-content: space-between; }
 .admin-head > div { display: flex; flex-direction: column; gap: 8px; }
+.admin-head > .admin-head__acciones { flex-direction: row; flex-wrap: wrap; gap: 10px; }
 .admin-nota { margin: 0; font-size: 14px; color: var(--muted); }
 .admin-error { margin: 0; font-size: 15px; color: #FF8A73; }
 .admin-aviso { margin: 0; padding: 18px; border-radius: 14px; background: #1A1408; border: 1px solid #4A3510; color: #D8CDB8; }
