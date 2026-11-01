@@ -459,9 +459,8 @@ select.input { padding: 0 14px; }
   .hero__bg { font-size: 280px; letter-spacing: -10px; right: -24px; }
   .hero__in { padding-top: 56px; padding-bottom: 72px; gap: 48px; }
   .hero__copy { gap: 22px; }
-  .eyebrow { font-size: 12px; letter-spacing: 2.5px; }
-  .eyebrow--line { gap: 10px; }
-  .eyebrow--line::before { width: 20px; }
+  .eyebrow { font-size: 12px; letter-spacing: 2px; }
+  .eyebrow--line::before { display: none; }
   .lead { font-size: 17px; }
   .hero__badge { left: 12px; right: 12px; bottom: -32px; padding: 14px 16px; }
   .btn-row .btn { flex: 1 1 auto; }
