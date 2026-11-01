@@ -224,7 +224,7 @@ const negocioLd = {
   '@type': 'AutoDealer',
   '@id': NEGOCIO_ID,
   name: 'DN Automóviles',
-  description: 'Automotora en Las Piedras, Canelones. Compra, venta y permuta de autos usados, al día o con deuda, con entrega a domicilio.',
+  description: 'Automotora en Las Piedras, Canelones. Compra, venta y permuta de autos usados, al día o con deuda, con envíos a todo el país.',
   url: SITIO,
   logo: SITIO + 'img/logo.png',
   image: SITIO + 'img/og.jpg',
@@ -236,7 +236,7 @@ const negocioLd = {
     addressRegion: 'Canelones',
     addressCountry: 'UY'
   },
-  areaServed: { '@type': 'City', name: 'Las Piedras' },
+  areaServed: { '@type': 'Country', name: 'Uruguay' },
   openingHours: C.horarioSchema ? C.horarioSchema.split(',').map((h) => h.trim()) : undefined,
   sameAs: C.tiktok ? ['https://www.tiktok.com/@' + C.tiktok] : undefined
 };
@@ -289,7 +289,7 @@ function generarPaginas() {
   const destacado = AUTOS.find((a) => a.destacado) || AUTOS[0];
   pagina('index.html', '', {
     titulo: 'Autos usados en Las Piedras, Canelones | DN Automóviles',
-    descripcion: 'Automotora en Las Piedras, Canelones: autos usados, camionetas y utilitarios. Compramos tu auto al día o con deuda, permutas y entrega a domicilio.',
+    descripcion: 'Automotora en Las Piedras, Canelones: autos usados, camionetas y utilitarios. Compramos tu auto al día o con deuda, permutas y envíos a todo el país.',
     jsonld: jsonld(negocioLd, { '@context': 'https://schema.org', '@type': 'WebSite', name: 'DN Automóviles', url: SITIO, inLanguage: 'es-UY' }),
     js: ['common'],
     destacado: destacado ? {
@@ -304,7 +304,7 @@ function generarPaginas() {
   // Stock
   pagina('autos.html', 'autos/', {
     titulo: 'Autos usados en venta en Las Piedras | DN Automóviles',
-    descripcion: 'Stock actualizado de autos usados, camionetas y utilitarios en Las Piedras, Canelones. Precios en dólares, permutas y entrega a domicilio.',
+    descripcion: 'Stock actualizado de autos usados, camionetas y utilitarios en Las Piedras, Canelones. Permutas y envío a domicilio a todo el país.',
     jsonld: jsonld(migas([['Inicio', SITIO], ['Autos disponibles', SITIO + 'autos/']])),
     nav: { autos: ' aria-current="page"', vende: '' },
     js: ['config', 'autos', 'common', 'stock'],
@@ -409,7 +409,7 @@ function generarAuto(a) {
   pagina('auto.html', ruta, {
     titulo: esc(`${nombre} ${a.anio} · ${DN.precio(a)} | DN Automóviles`),
     descripcion: esc(`${nombre} ${a.anio} en venta en Las Piedras: ${km}, ${a.combustible}, ${a.transmision}. ` +
-      `${DN.precio(a)}. Aceptamos permuta y te lo llevamos a domicilio.`),
+      `${DN.precio(a)}. Aceptamos permuta y lo enviamos a todo el país.`),
     ogTipo: 'product',
     ogImagen: fotos.length ? SITIO + fotos[0] : SITIO + 'img/og.jpg',
     jsonld: jsonld(autoLd(a, url), migas([['Inicio', SITIO], ['Autos disponibles', SITIO + 'autos/'], [`${nombre} ${a.anio}`, url]])),

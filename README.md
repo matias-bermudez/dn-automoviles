@@ -36,3 +36,11 @@ La clave pública puede ir en el código: los permisos de `schema.sql` hacen que
 node scripts/generar.js --local
 python3 -m http.server 8791 -d _site   # → http://localhost:8791
 ```
+
+## Si el dueño se olvida la contraseña del panel
+
+En Supabase → SQL Editor (cambiar email y contraseña):
+
+```sql
+update auth.users set encrypted_password = crypt('contraseña-nueva', gen_salt('bf')) where email = 'email-del-dueño';
+```

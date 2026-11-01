@@ -8,7 +8,7 @@ window.DN_CONFIG = {
   direccion: '',
   horario: '',                  // como se muestra en la web, ej: 'Lunes a viernes 9 a 18 h · Sábados 9 a 13 h'
   horarioSchema: '',            // el mismo horario para Google, ej: 'Mo-Fr 09:00-18:00, Sa 09:00-13:00'
-  zonas: 'Las Piedras y alrededores',
+  zonas: 'todo el país',
   tiktok: 'dnventascompras2',
   dolar: 40,                    // pesos por dólar, aproximado: solo para ordenar por precio autos en distintas monedas
 
