@@ -62,6 +62,15 @@ drop policy if exists "admin gestiona autos" on public.autos;
 create policy "admin gestiona autos" on public.autos
   for all to authenticated using (public.es_admin()) with check (public.es_admin());
 
+-- ── Acceso por la API ─────────────────────────────────────────────
+-- Explícito, por si el proyecto se creó sin "Automatically expose new tables".
+-- Igual manda RLS: la web solo ve autos publicados y solo los admins escriben. admins no se expone.
+grant usage on schema public to anon, authenticated;
+grant select on public.autos to anon, authenticated;
+grant insert, update, delete on public.autos to authenticated;
+grant usage, select on all sequences in schema public to authenticated;
+grant execute on function public.es_admin() to anon, authenticated;
+
 -- ── Fotos ─────────────────────────────────────────────────────────
 -- Bucket público: cualquiera puede ver una foto si sabe la ruta. Solo los admins suben o borran.
 insert into storage.buckets (id, name, public)
