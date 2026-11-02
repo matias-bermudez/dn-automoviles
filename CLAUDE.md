@@ -1,6 +1,6 @@
 # DN Automóviles — web
 
-Web para **DN Automóviles** (compra-venta de autos usados, Las Piedras, Canelones). Es una **propuesta**: el cliente todavía no la vio ni la pagó. La idea es tenerla publicada y mandársela para ver si le interesa.
+Web para **DN Automóviles** (compra-venta de autos usados, Las Piedras, Canelones). Hasta el lanzamiento queda con `indexar: false` (noindex).
 
 - Repo: https://github.com/matias-bermudez/dn-automoviles (tiene que ser **público**: GitHub Pages en plan free no publica repos privados)
 - Web: https://matias-bermudez.github.io/dn-automoviles/
@@ -67,7 +67,7 @@ Chrome headless solo (`--screenshot`) no sirve para mobile: en Mac no baja de ~5
 - 2026-10-31: #11 base de datos + panel con Supabase (misma arquitectura que KM39). Falta conectar el proyecto.
 - 2026-10-31: Supabase conectado. Bug: km/precio con punto ("200.000") se guardaban como decimal → ahora campos de texto que toman solo dígitos.
 - 2026-11-01: publicación al guardar andando (#11 cerrado). Precios en U$S o $ (columna moneda).
-- 2026-11-01: stock real cargado desde capturas de videos de DN: Peugeot 3008, Peugeot 308, Chana Star Truck, Chery QQ. Ejemplos y autos de prueba borrados. **Versión, año, km, dueños y precios (salvo los $140.000 de la Chana) son inventados**: corregir con DN.
+- 2026-11-01: stock real cargado desde capturas de videos de DN: Peugeot 3008, Peugeot 308, Chana Star Truck, Chery QQ. Ejemplos y autos de prueba borrados. Datos por confirmar con DN antes de lanzar.
 - 2026-11-01: WhatsApp pasado al número de DN. Envíos a todo el país en los textos.
 - 2026-11-01: **Plataforma Automotoras**: la base de Supabase pasó a ser compartida por todas las automotoras de Matías (`~/Proyectos/plataforma-automotoras`, repo privado). DN es la implementación de referencia (`concesionaria: 'dn'`). KM39, Khalek y Mar Motors se adaptan a la misma base; Carlitos y JH Motors se rehacen como estáticos desde sus propios chats.
 - Pendiente: #9 (datos reales, Cloudflare Pages, dominio, lanzamiento SEO).
